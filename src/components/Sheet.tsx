@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ScrollView, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import { t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
 import { motion, radii } from '../theme/tokens';
 import { Grabber } from './controls';
+import { Touchable } from './Touchable';
 
 /**
  * Bottom sheet drawn inside a transparent modal route: scrim + sliding panel,
@@ -39,7 +40,7 @@ export function Sheet({
   return (
     <View style={{ flex: 1, justifyContent: 'flex-end' }}>
       <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(200)} style={{ position: 'absolute', inset: 0 }}>
-        <Pressable
+        <Touchable
           accessibilityLabel={t.a11y.close}
           accessibilityRole="button"
           onPress={dismiss}

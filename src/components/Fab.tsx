@@ -1,14 +1,15 @@
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
 import { sizes } from '../theme/tokens';
+import { Touchable } from './Touchable';
 
 export function Fab({ bottom }: { bottom: number }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel={t.common.addTask}
       onPress={() => router.push('/add')}
@@ -32,6 +33,6 @@ export function Fab({ bottom }: { bottom: number }) {
     >
       <View style={{ position: 'absolute', width: 20, height: 2.5, borderRadius: 2, backgroundColor: c.bg }} />
       <View style={{ position: 'absolute', width: 2.5, height: 20, borderRadius: 2, backgroundColor: c.bg }} />
-    </Pressable>
+    </Touchable>
   );
 }

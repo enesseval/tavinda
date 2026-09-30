@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
@@ -8,6 +8,7 @@ import { CalendarTabIcon, ProfileTabIcon, TodayTabIcon } from '../../components/
 import { t } from '../../i18n/tr';
 import { useAppData } from '../../services/data';
 import { useTheme } from '../../theme/theme';
+import { Touchable } from '../../components/Touchable';
 
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
@@ -36,7 +37,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
         const focused = state.index === index;
         const color = focused ? c.ink : c.ink3;
         return (
-          <Pressable
+          <Touchable
             key={name}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
@@ -52,7 +53,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
             <AppText variant="tab" color={color} maxFontSizeMultiplier={1.2}>
               {label}
             </AppText>
-          </Pressable>
+          </Touchable>
         );
       })}
     </View>

@@ -1,6 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Platform, Pressable, TextInput, View } from 'react-native';
+import { Platform, TextInput, View } from 'react-native';
 
 import { dateAtTime, minutesToTime, timeToMinutes } from '../domain/dates';
 import { t, WEEKDAYS_LONG, WEEKDAYS_SHORT } from '../i18n/tr';
@@ -10,6 +10,7 @@ import { radii } from '../theme/tokens';
 import { colorFor, shortNameFor } from '../ui/courseDrafts';
 import { AppText } from './AppText';
 import { Button, Chip, Toggle } from './controls';
+import { Touchable } from './Touchable';
 
 export function CandidateList({ drafts, onToggle }: { drafts: OnboardingCourseDraft[]; onToggle: (key: string) => void }) {
   const { c } = useTheme();
@@ -18,7 +19,7 @@ export function CandidateList({ drafts, onToggle }: { drafts: OnboardingCourseDr
       style={{ borderRadius: radii.input, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, overflow: 'hidden' }}
     >
       {drafts.map((d, i) => (
-        <Pressable
+        <Touchable
           key={d.key}
           accessibilityRole="switch"
           accessibilityState={{ checked: d.enabled }}
@@ -46,7 +47,7 @@ export function CandidateList({ drafts, onToggle }: { drafts: OnboardingCourseDr
             </AppText>
           </View>
           <Toggle label={d.name} value={d.enabled} onChange={() => onToggle(d.key)} />
-        </Pressable>
+        </Touchable>
       ))}
     </View>
   );
@@ -57,7 +58,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   const [open, setOpen] = useState(false);
   return (
     <View className="flex-1">
-      <Pressable
+      <Touchable
         accessibilityRole="button"
         accessibilityLabel={`${label} ${value}`}
         onPress={() => setOpen((o) => !o)}
@@ -77,7 +78,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
         <AppText variant="headline" tabular>
           {value}
         </AppText>
-      </Pressable>
+      </Touchable>
       {open ? (
         <DateTimePicker
           value={dateAtTime('2026-01-05', value)}
@@ -206,7 +207,7 @@ export function DraftList({ drafts, onRemove }: { drafts: OnboardingCourseDraft[
             </AppText>
           </View>
           {onRemove ? (
-            <Pressable
+            <Touchable
               accessibilityRole="button"
               accessibilityLabel={`${d.name} ${t.common.delete}`}
               hitSlop={10}
@@ -215,7 +216,7 @@ export function DraftList({ drafts, onRemove }: { drafts: OnboardingCourseDraft[
               <AppText variant="body" color={c.heat[3]}>
                 {t.common.delete}
               </AppText>
-            </Pressable>
+            </Touchable>
           ) : null}
         </View>
       ))}

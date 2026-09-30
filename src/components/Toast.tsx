@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 
 import { undo } from '../services/actions';
@@ -8,6 +8,7 @@ import { useTheme } from '../theme/theme';
 import { radii } from '../theme/tokens';
 import { t } from '../i18n/tr';
 import { AppText } from './AppText';
+import { Touchable } from './Touchable';
 
 /** Global toast above the tab bar. Undoable toasts stay a little longer. */
 export function ToastHost({ bottom }: { bottom: number }) {
@@ -52,7 +53,7 @@ export function ToastHost({ bottom }: { bottom: number }) {
           {toast.text}
         </AppText>
         {toast.undo ? (
-          <Pressable
+          <Touchable
             accessibilityRole="button"
             hitSlop={10}
             onPress={() => {
@@ -63,7 +64,7 @@ export function ToastHost({ bottom }: { bottom: number }) {
             <AppText variant="bodyStrong" color={c.bg} style={{ opacity: 0.75 }}>
               {t.common.undo}
             </AppText>
-          </Pressable>
+          </Touchable>
         ) : null}
       </View>
     </Animated.View>

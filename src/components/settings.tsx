@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useTheme } from '../theme/theme';
 import { radii } from '../theme/tokens';
 import { AppText } from './AppText';
+import { Touchable } from './Touchable';
 
 export function SettingsGroup({ title, footer, children }: { title?: string; footer?: string; children: ReactNode }) {
   const { c } = useTheme();
@@ -84,13 +85,13 @@ export function SettingsRow({
     </View>
   );
   return onPress ? (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({ backgroundColor: pressed ? c.surface2 : 'transparent' })}
     >
       {content}
-    </Pressable>
+    </Touchable>
   ) : (
     content
   );

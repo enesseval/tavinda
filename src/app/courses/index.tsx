@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
@@ -10,6 +10,7 @@ import { deleteCourse } from '../../services/actions';
 import { useAppData } from '../../services/data';
 import { useTheme } from '../../theme/theme';
 import { radii } from '../../theme/tokens';
+import { Touchable } from '../../components/Touchable';
 
 export default function CoursesScreen() {
   const { c } = useTheme();
@@ -57,7 +58,7 @@ export default function CoursesScreen() {
                       {k.source === 'calendar' ? t.courses.sourceCalendar : t.courses.sourceManual}
                     </AppText>
                   </View>
-                  <Pressable
+                  <Touchable
                     accessibilityRole="button"
                     accessibilityLabel={`${k.name} ${t.common.delete}`}
                     hitSlop={10}
@@ -66,7 +67,7 @@ export default function CoursesScreen() {
                     <AppText variant="body" color={c.heat[3]}>
                       {t.common.delete}
                     </AppText>
-                  </Pressable>
+                  </Touchable>
                 </View>
               ))}
             </View>

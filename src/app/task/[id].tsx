@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
@@ -18,6 +18,7 @@ import { useUi } from '../../store/ui';
 import { useTheme } from '../../theme/theme';
 import { heatBorder, radii } from '../../theme/tokens';
 import { useTaskActions } from '../../ui/useTaskActions';
+import { Touchable } from '../../components/Touchable';
 
 export default function TaskDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -93,7 +94,7 @@ export default function TaskDetail() {
             paddingRight: 16,
           }}
         >
-          <Pressable
+          <Touchable
             accessibilityRole="button"
             onPress={() => router.back()}
             hitSlop={8}
@@ -101,14 +102,14 @@ export default function TaskDetail() {
           >
             <ChevronLeft color={c.ink} />
             <AppText variant="bodyLarge">{t.detail.back}</AppText>
-          </Pressable>
-          <Pressable
+          </Touchable>
+          <Touchable
             accessibilityRole="button"
             hitSlop={8}
             onPress={() => router.push({ pathname: '/add', params: { taskId: String(task.id) } })}
           >
             <AppText variant="bodyLarge">{t.common.edit}</AppText>
-          </Pressable>
+          </Touchable>
         </View>
 
         <View style={{ paddingTop: 8, paddingHorizontal: 20, gap: 12 }}>

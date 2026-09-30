@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
 import { ChevronLeft } from './icons';
+import { Touchable } from './Touchable';
 
 /** Back chevron + 4 progress dots, as in the design. */
 export function OnboardingFrame({ step, children, footer }: { step: number; children: ReactNode; footer?: ReactNode }) {
@@ -17,14 +18,14 @@ export function OnboardingFrame({ step, children, footer }: { step: number; chil
       <View className="h-11 flex-row items-center px-2">
         <View className="w-11">
           {step > 1 && router.canGoBack() ? (
-            <Pressable
+            <Touchable
               accessibilityRole="button"
               accessibilityLabel={t.a11y.back}
               onPress={() => router.back()}
               className="h-11 w-11 items-center justify-center"
             >
               <ChevronLeft color={c.ink} />
-            </Pressable>
+            </Touchable>
           ) : null}
         </View>
         <View className="flex-1 flex-row justify-center gap-1.5" accessibilityLabel={t.a11y.step(dot, 4)}>

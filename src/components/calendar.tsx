@@ -1,7 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { useMemo, type ReactElement } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { addDays, diffDays, isoWeekday, startOfIsoWeek, timeToMinutes } from '../domain/dates';
 import { heatFor, shareForInstance } from '../domain/heat';
@@ -15,6 +15,7 @@ import { AppText } from './AppText';
 import { CoursePill } from './controls';
 import { GradientBar } from './GradientBar';
 import { ChevronLeft, ChevronRight, FlagIcon, LockIcon } from './icons';
+import { Touchable } from './Touchable';
 
 function NavArrows({
   onPrev,
@@ -30,22 +31,22 @@ function NavArrows({
   const { c } = useTheme();
   return (
     <View style={{ flexDirection: 'row' }}>
-      <Pressable
+      <Touchable
         accessibilityRole="button"
         accessibilityLabel={prevLabel}
         onPress={onPrev}
         style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
       >
         <ChevronLeft color={c.ink} />
-      </Pressable>
-      <Pressable
+      </Touchable>
+      <Touchable
         accessibilityRole="button"
         accessibilityLabel={nextLabel}
         onPress={onNext}
         style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
       >
         <ChevronRight color={c.ink} />
-      </Pressable>
+      </Touchable>
     </View>
   );
 }
@@ -114,7 +115,7 @@ export function WeekView({
         {plans.map((p) => {
           const isT = p.day === today;
           return (
-            <Pressable
+            <Touchable
               key={p.day}
               accessibilityRole="button"
               accessibilityLabel={`${fmtDayShortDate(p.day)}, ${p.totalMinutes ? fmtMinutes(p.totalMinutes) : t.calendar.noPlan}`}
@@ -159,7 +160,7 @@ export function WeekView({
                   {p.totalMinutes ? fmtMinutes(p.totalMinutes) : '–'}
                 </AppText>
               </View>
-            </Pressable>
+            </Touchable>
           );
         })}
       </View>
@@ -176,7 +177,7 @@ export function WeekView({
             const to = c.heat[b.heatTo];
             return (
               <View key={`${b.instance.id}-${b.task.id}`} style={{ height: 36 }}>
-                <Pressable
+                <Touchable
                   accessibilityRole="button"
                   accessibilityLabel={`${b.task.title}, ${HEAT_NAMES[b.heatTo]}`}
                   onPress={() => openBar(b)}
@@ -226,7 +227,7 @@ export function WeekView({
                       ]}
                     />
                   </View>
-                </Pressable>
+                </Touchable>
               </View>
             );
           })
@@ -401,7 +402,7 @@ export function MonthView({
           const other = d.slice(0, 7) !== month;
           const weekend = isoWeekday(d) >= 6;
           return (
-            <Pressable
+            <Touchable
               key={d}
               accessibilityRole="button"
               accessibilityLabel={`${fmtDayShortDate(d)}${flag ? `, ${t.calendar.legendDue}` : ''}${heats.length ? `, ${HEAT_NAMES[heats[0]]}` : ''}`}
@@ -446,7 +447,7 @@ export function MonthView({
                   <FlagIcon color={c.ink2} size={11} filled />
                 </View>
               ) : null}
-            </Pressable>
+            </Touchable>
           );
         })}
       </View>
@@ -525,7 +526,7 @@ function DueCard({ row }: { row: DueRow }) {
           { offset: 1, color: c.heat[3] },
         ];
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel={`${row.title}, ${t.card.daysLeft(row.daysLeft)}, %${row.progress}, ${HEAT_NAMES[row.heat]}`}
       onPress={() => router.push({ pathname: '/task/[id]', params: { id: String(row.taskId) } })}
@@ -590,7 +591,7 @@ function DueCard({ row }: { row: DueRow }) {
           {fmtDayShortDate(row.due)}
         </AppText>
       </View>
-    </Pressable>
+    </Touchable>
   );
 }
 

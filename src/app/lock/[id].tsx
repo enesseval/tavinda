@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -22,6 +22,7 @@ import { t } from '../../i18n/tr';
 import { useTheme } from '../../theme/theme';
 import { mix } from '../../theme/tokens';
 import { useInstanceItem } from '../../ui/useItem';
+import { Touchable } from '../../components/Touchable';
 
 /** "Son gün kilidi anı": the defer pill morphs into a lock. */
 export default function LockMoment() {
@@ -62,7 +63,7 @@ export default function LockMoment() {
   return (
     <View style={{ flex: 1, justifyContent: 'flex-end' }}>
       <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(300)} style={{ position: 'absolute', inset: 0 }}>
-        <Pressable
+        <Touchable
           accessibilityRole="button"
           accessibilityLabel={t.common.close}
           onPress={close}

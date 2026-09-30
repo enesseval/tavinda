@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
 import { AppText } from './AppText';
 import { ChevronLeft } from './icons';
+import { Touchable } from './Touchable';
 
 /** Back chevron + large title, for pushed screens. */
 export function ScreenHeader({
@@ -21,7 +22,7 @@ export function ScreenHeader({
   return (
     <View>
       <View className="h-11 flex-row items-center justify-between pl-2 pr-4">
-        <Pressable
+        <Touchable
           accessibilityRole="button"
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           hitSlop={8}
@@ -29,7 +30,7 @@ export function ScreenHeader({
         >
           <ChevronLeft color={c.ink} />
           <AppText variant="bodyLarge">{backLabel}</AppText>
-        </Pressable>
+        </Touchable>
         {right}
       </View>
       <AppText variant="display" className="px-5 pt-1" accessibilityRole="header">

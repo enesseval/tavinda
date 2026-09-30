@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { timeToMinutes } from '../domain/dates';
 import type { LoadSegment, TodayItem } from '../domain/today';
@@ -12,6 +12,7 @@ import { AppText } from './AppText';
 import { Button, CoursePill } from './controls';
 import { CalendarSetupIcon, HeatGlyph, LockIcon, NoCalendarIcon } from './icons';
 import { HeatPulse } from './TaskCard';
+import { Touchable } from './Touchable';
 
 export function LoadBar({ segments }: { segments: LoadSegment[] }) {
   const { c } = useTheme();
@@ -57,9 +58,9 @@ export function NoCalendarBanner({ onPress }: { onPress: () => void }) {
       <AppText variant="footnote" weight="500" tone="ink2" style={{ flex: 1 }}>
         {t.today.noCalendar}
       </AppText>
-      <Pressable accessibilityRole="button" onPress={onPress} hitSlop={10}>
+      <Touchable accessibilityRole="button" onPress={onPress} hitSlop={10}>
         <AppText variant="label">{t.common.settings}</AppText>
-      </Pressable>
+      </Touchable>
     </View>
   );
 }
@@ -316,7 +317,7 @@ export function HeroCard({
       {lvl === 4 ? <HeatPulse color={color} /> : null}
       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: color }} />
       <View style={{ paddingTop: 18, paddingBottom: 20, paddingLeft: 24, paddingRight: 20, gap: 14 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={item.task.title} onPress={onOpen} style={{ gap: 14 }}>
+        <Touchable accessibilityRole="button" accessibilityLabel={item.task.title} onPress={onOpen} style={{ gap: 14 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <View
               style={{
@@ -350,7 +351,7 @@ export function HeroCard({
               {heroLine(item, today)}
             </AppText>
           </View>
-        </Pressable>
+        </Touchable>
         <View style={{ height: 4, borderRadius: 2, backgroundColor: c.surface2, overflow: 'hidden' }}>
           <View style={{ height: '100%', width: `${item.instance.progress}%`, backgroundColor: color, borderRadius: 2 }} />
         </View>
@@ -373,7 +374,7 @@ export function LongTermCard({ item, onPress }: { item: TodayItem; onPress: () =
   const { c } = useTheme();
   const color = c.heat[item.heat];
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel={t.a11y.longTerm(item.task.title, Math.max(0, item.daysLeft - 1), item.instance.progress)}
       onPress={onPress}
@@ -406,6 +407,6 @@ export function LongTermCard({ item, onPress }: { item: TodayItem; onPress: () =
       <View style={{ height: 3, borderRadius: 2, backgroundColor: c.surface2 }}>
         <View style={{ height: '100%', width: `${item.instance.progress}%`, borderRadius: 2, backgroundColor: color }} />
       </View>
-    </Pressable>
+    </Touchable>
   );
 }

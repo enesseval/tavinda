@@ -1,7 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
@@ -19,6 +19,7 @@ import { useTheme } from '../../theme/theme';
 import { mix } from '../../theme/tokens';
 import { toCardModel } from '../../ui/taskText';
 import { useTaskActions } from '../../ui/useTaskActions';
+import { Touchable } from '../../components/Touchable';
 
 type Row =
   | { type: 'header'; key: string }
@@ -204,9 +205,9 @@ export default function TodayScreen() {
               {t.today.groups[row.group]}
             </AppText>
             {row.collapsible ? (
-              <Pressable accessibilityRole="button" onPress={toggleUpcoming} hitSlop={10}>
+              <Touchable accessibilityRole="button" onPress={toggleUpcoming} hitSlop={10}>
                 <AppText variant="body">{expanded ? t.today.showLess : t.today.showAll(row.count)}</AppText>
-              </Pressable>
+              </Touchable>
             ) : (
               <AppText variant="caption" tone="ink3" tabular>
                 {row.count}

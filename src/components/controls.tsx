@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '../theme/theme';
 import { heatBorder, radii, sizes } from '../theme/tokens';
@@ -8,6 +8,7 @@ import type { HeatLevel } from '../domain/types';
 import { HEAT_NAMES, t } from '../i18n/tr';
 import { AppText } from './AppText';
 import { HeatGlyph, LockIcon } from './icons';
+import { Touchable } from './Touchable';
 
 type ButtonKind = 'primary' | 'secondary' | 'lastChance' | 'locked' | 'ghost' | 'destructive';
 
@@ -44,7 +45,7 @@ export function Button({ label, onPress, kind = 'primary', small, disabled, styl
   const v = variants[kind];
   const isDisabled = disabled || kind === 'locked';
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
@@ -63,7 +64,7 @@ export function Button({ label, onPress, kind = 'primary', small, disabled, styl
       <AppText variant={v.variant} color={v.fg} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
       </AppText>
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -82,7 +83,7 @@ export function Chip({
 }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
@@ -107,7 +108,7 @@ export function Chip({
       <AppText variant={small ? 'footnote' : 'body'} weight="500" color={selected ? c.bg : c.ink}>
         {label}
       </AppText>
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -124,7 +125,7 @@ export function Stepper({
 }) {
   const { c } = useTheme();
   const btn = (label: string, glyph: string, fn: () => void) => (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => {
@@ -143,7 +144,7 @@ export function Stepper({
       <AppText variant="bodyLarge" style={{ fontSize: 20, lineHeight: 24 }} weight="500">
         {glyph}
       </AppText>
-    </Pressable>
+    </Touchable>
   );
   return (
     <View
@@ -176,7 +177,7 @@ export function Segmented<T extends string>({
       {options.map((o) => {
         const on = o.value === value;
         return (
-          <Pressable
+          <Touchable
             key={o.value}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
@@ -201,7 +202,7 @@ export function Segmented<T extends string>({
             <AppText variant="footnote" weight={on ? '600' : '500'}>
               {o.label}
             </AppText>
-          </Pressable>
+          </Touchable>
         );
       })}
     </View>
@@ -211,7 +212,7 @@ export function Segmented<T extends string>({
 export function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: value }}
@@ -236,7 +237,7 @@ export function Toggle({ value, onChange, label }: { value: boolean; onChange: (
           shadowOffset: { width: 0, height: 2 },
         }}
       />
-    </Pressable>
+    </Touchable>
   );
 }
 
@@ -329,7 +330,7 @@ export function Grabber() {
 export function CloseButton({ onPress }: { onPress: () => void }) {
   const { c } = useTheme();
   return (
-    <Pressable
+    <Touchable
       accessibilityRole="button"
       accessibilityLabel={t.a11y.close}
       onPress={onPress}
@@ -346,6 +347,6 @@ export function CloseButton({ onPress }: { onPress: () => void }) {
       <AppText variant="bodyStrong" tone="ink2" style={{ lineHeight: 18 }}>
         ✕
       </AppText>
-    </Pressable>
+    </Touchable>
   );
 }

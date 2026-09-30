@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AppText } from '../../components/AppText';
 import { CloseButton } from '../../components/controls';
@@ -13,6 +13,7 @@ import { HEAT_NAMES, t } from '../../i18n/tr';
 import { useNow } from '../../services/clock';
 import { useAppData } from '../../services/data';
 import { useTheme } from '../../theme/theme';
+import { Touchable } from '../../components/Touchable';
 
 export default function DaySheet() {
   const { date } = useLocalSearchParams<{ date: string }>();
@@ -117,7 +118,7 @@ export default function DaySheet() {
         </View>
         {plan.shares.length ? (
           plan.shares.map((s) => (
-            <Pressable
+            <Touchable
               key={`${s.instance.id}-${s.task.id}`}
               accessibilityRole="button"
               accessibilityLabel={`${s.task.title}, ${HEAT_NAMES[s.heat]}, ${fmtMinutes(s.minutes)}`}
@@ -156,7 +157,7 @@ export default function DaySheet() {
               <AppText variant="bodyStrong" tabular>
                 {fmtMinutes(s.minutes)}
               </AppText>
-            </Pressable>
+            </Touchable>
           ))
         ) : (
           <AppText variant="body" tone="ink3">

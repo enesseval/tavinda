@@ -1,7 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Platform, ScrollView, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,6 +21,7 @@ import { useAppData } from '../services/data';
 import { useUi } from '../store/ui';
 import { useTheme } from '../theme/theme';
 import { mix, radii, type ColorTokens } from '../theme/tokens';
+import { Touchable } from '../components/Touchable';
 
 type Step = 'choose' | 'weekly' | 'deadline';
 
@@ -108,9 +109,9 @@ function Row({
     </View>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" onPress={onPress}>
+    <Touchable accessibilityRole="button" onPress={onPress}>
       {body}
-    </Pressable>
+    </Touchable>
   ) : (
     body
   );
@@ -224,7 +225,7 @@ export default function AddTask() {
         <Grabber />
         <View style={{ flexDirection: 'row', alignItems: 'center', height: 44, marginTop: 4 }}>
           <View style={{ flex: 1, alignItems: 'flex-start' }}>
-            <Pressable
+            <Touchable
               accessibilityRole="button"
               onPress={navLeft}
               hitSlop={8}
@@ -232,14 +233,14 @@ export default function AddTask() {
             >
               {isForm && !editing && !params.kind ? <ChevronLeft color={c.ink} /> : null}
               <AppText variant="bodyLarge">{isForm && !editing && !params.kind ? t.common.back : t.common.cancel}</AppText>
-            </Pressable>
+            </Touchable>
           </View>
           <AppText variant="headline" numberOfLines={1}>
             {editing ? t.add.editTask : step === 'weekly' ? t.add.weekly : step === 'deadline' ? t.add.deadline : t.add.newTask}
           </AppText>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             {isForm ? (
-              <Pressable
+              <Touchable
                 accessibilityRole="button"
                 onPress={submit}
                 hitSlop={8}
@@ -248,7 +249,7 @@ export default function AddTask() {
                 <AppText variant="headline" tone={valid ? 'ink' : 'ink3'}>
                   {editing ? t.common.save : t.common.add}
                 </AppText>
-              </Pressable>
+              </Touchable>
             ) : null}
           </View>
         </View>
@@ -274,7 +275,7 @@ export default function AddTask() {
                   icon: <FlagIcon color={c.ink2} size={22} />,
                 },
               ].map((o) => (
-                <Pressable
+                <Touchable
                   key={o.k}
                   accessibilityRole="button"
                   onPress={() => setStep(o.k)}
@@ -307,7 +308,7 @@ export default function AddTask() {
                       {o.desc}
                     </AppText>
                   </View>
-                </Pressable>
+                </Touchable>
               ))}
             </View>
           </View>

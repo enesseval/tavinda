@@ -1,6 +1,6 @@
 import { addMonths, format } from 'date-fns';
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
@@ -13,6 +13,7 @@ import { t } from '../../i18n/tr';
 import { useNow } from '../../services/clock';
 import { useAppData } from '../../services/data';
 import { useUi } from '../../store/ui';
+import { Touchable } from '../../components/Touchable';
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
@@ -47,7 +48,7 @@ export default function CalendarScreen() {
             {t.calendar.title}
           </AppText>
         </View>
-        <Pressable
+        <Touchable
           accessibilityRole="button"
           hitSlop={10}
           onPress={() => {
@@ -58,7 +59,7 @@ export default function CalendarScreen() {
           style={{ marginBottom: 8 }}
         >
           <AppText variant="bodyLarge">{t.calendar.today}</AppText>
-        </Pressable>
+        </Touchable>
       </View>
       <View style={{ marginTop: 14, marginHorizontal: 20 }}>
         <Segmented
