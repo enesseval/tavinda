@@ -6,8 +6,8 @@ const VERSION = '0.1.0';
 
 // Expo Go only opens manifests the CLI can sign, which needs a logged-in Expo account
 // and a project id from expo.dev. Only the id is used; no EAS Build or Update.
-const EXPO_PROJECT_ID = process.env.EXPO_PROJECT_ID;
-const EXPO_OWNER = process.env.EXPO_OWNER;
+const EXPO_PROJECT_ID = process.env.EXPO_PROJECT_ID ?? '79d704ef-3413-4f79-85d0-90be30aad144';
+const EXPO_OWNER = process.env.EXPO_OWNER ?? 'enesseval';
 
 const CALENDAR_USAGE = 'Ders programını takviminden okumak için. Takvimine bir şey yazmayız.';
 
