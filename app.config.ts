@@ -4,12 +4,22 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 const BUILD_NUMBER = '1';
 const VERSION = '0.1.0';
 
+// Expo Go only opens manifests the CLI can sign, which needs a logged-in Expo account
+// and a project id from expo.dev. Only the id is used; no EAS Build or Update.
+const EXPO_PROJECT_ID = process.env.EXPO_PROJECT_ID;
+const EXPO_OWNER = process.env.EXPO_OWNER;
+
 const CALENDAR_USAGE = 'Ders programını takviminden okumak için. Takvimine bir şey yazmayız.';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Tavında',
   slug: 'tavinda',
+  ...(EXPO_OWNER ? { owner: EXPO_OWNER } : {}),
+  extra: {
+    ...config.extra,
+    ...(EXPO_PROJECT_ID ? { eas: { projectId: EXPO_PROJECT_ID } } : {}),
+  },
   scheme: 'tavinda',
   version: VERSION,
   orientation: 'portrait',

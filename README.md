@@ -6,12 +6,28 @@ Stack: Expo SDK 57 · TypeScript strict · expo-router · NativeWind · expo-sql
 
 ## Hızlı başlangıç (Expo Go)
 
+Expo Go yalnızca Expo CLI'ın imzaladığı projeleri açar. İmza için bir Expo hesabı ve proje kimliği gerekir (sadece kimlik; EAS Build/Update kullanılmaz). Bir kerelik kurulum:
+
+1. https://expo.dev üzerinde ücretsiz hesap aç (varsa atla).
+2. Terminalde: `npx expo login`
+3. iPhone'da Expo Go › Profil › aynı hesapla giriş yap.
+4. Proje kimliği al: `npx eas-cli@latest init --non-interactive --force` (ya da expo.dev › Projects › Create project, slug: `tavinda`) ve çıkan kimliği `.env`'e yaz:
+   ```bash
+   cp .env.example .env
+   # EXPO_OWNER=<expo kullanıcı adın>
+   # EXPO_PROJECT_ID=<proje kimliği>
+   ```
+
+Sonra:
+
 ```bash
 npm install
 npx expo start
 ```
 
-iPhone'da Expo Go ile QR'ı okut. Geliştirici menüsündeki "Demo dönem yükle" ile anında dolu bir dönem görebilirsin.
+QR'ı iPhone kamerasıyla okut. Geliştirici menüsündeki "Demo dönem yükle" ile anında dolu bir dönem görebilirsin.
+
+Alternatif (hesapsız): Mac'te Xcode varsa `npx expo run:ios --device` uygulamayı geliştirme build'i olarak doğrudan telefona kurar; Expo Go gerekmez.
 
 ## Kontroller
 
@@ -26,7 +42,7 @@ npx expo export -p ios  # üretim bundle'ı
 
 Önkoşul: Mac, Xcode, CocoaPods, App Store Connect'te bu bundle id ile açılmış bir uygulama kaydı.
 
-1. Proje köküne bir `.env` dosyası aç (git'e girmez, Expo CLI otomatik okur):
+1. `.env` dosyasına (bkz. `.env.example`; git'e girmez, Expo CLI otomatik okur) ekle:
    ```bash
    IOS_BUNDLE_ID=com.<senin-onekin>.tavinda
    APPLE_TEAM_ID=<10 haneli Team ID>
