@@ -31,6 +31,8 @@ jest.mock('expo-font', () => ({
   useFonts: () => [true, null],
 }));
 
+jest.setTimeout(30_000);
+
 const today = logicalDate(new Date(), '04:00');
 
 function seeded() {

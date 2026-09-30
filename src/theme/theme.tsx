@@ -31,7 +31,7 @@ export function useReduceMotion(): boolean {
 export function ThemeProvider({ pref, children }: { pref: ThemePref; children: ReactNode }) {
   useEffect(() => {
     // Keeps native pickers and alerts in the same appearance as the app.
-    Appearance.setColorScheme(pref === 'system' ? 'unspecified' : pref);
+    Appearance.setColorScheme(pref === 'system' ? null : pref);
   }, [pref]);
   const system = useColorScheme();
   const reduceMotion = useReduceMotion();

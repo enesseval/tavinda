@@ -2,32 +2,16 @@
 
 "Demir tavında dövülür." Ders programını takvimden okuyan, işleri teslim tarihine göre günlere dağıtan ve iş yaklaştıkça ısınan öğrenci planlayıcısı. v0 tamamen yereldir: sunucu, hesap, ödeme ve ağ çağrısı yok.
 
-Stack: Expo SDK 57 · TypeScript strict · expo-router · NativeWind · expo-sqlite · Reanimated · FlashList · date-fns (tr).
+Stack: Expo SDK 54 (React Native 0.81, Xcode 26 ile derlenir) · TypeScript strict · expo-router · NativeWind · expo-sqlite · Reanimated · FlashList · date-fns (tr).
 
-## Hızlı başlangıç (Expo Go)
+## Çalıştırma
 
-Expo Go yalnızca Expo CLI'ın imzaladığı projeleri açar. İmza için bir Expo hesabı ve proje kimliği gerekir (sadece kimlik; EAS Build/Update kullanılmaz). Bir kerelik kurulum:
+Proje Expo SDK 54'te: Xcode 26.3 ile derlenebilen son sürüm (SDK 57, Xcode 27 gerektiriyor). App Store'daki Expo Go yalnızca en güncel SDK'yı açtığı için bu proje Expo Go ile açılmaz. Telefonda denemek için:
 
-1. https://expo.dev üzerinde ücretsiz hesap aç (varsa atla).
-2. Terminalde: `npx expo login`
-3. iPhone'da Expo Go › Profil › aynı hesapla giriş yap.
-4. Proje kimliği al: `npx eas-cli@latest init --non-interactive --force` (ya da expo.dev › Projects › Create project, slug: `tavinda`) ve çıkan kimliği `.env`'e yaz:
-   ```bash
-   cp .env.example .env
-   # EXPO_OWNER=<expo kullanıcı adın>
-   # EXPO_PROJECT_ID=<proje kimliği>
-   ```
+- **TestFlight** (önerilen): aşağıdaki adımlarla yükle, TestFlight uygulamasından kur.
+- **Geliştirme build'i**: Mac'e iPhone USB ile bağlıyken `npx expo run:ios --device`.
 
-Sonra:
-
-```bash
-npm install
-npx expo start
-```
-
-QR'ı iPhone kamerasıyla okut. Geliştirici menüsündeki "Demo dönem yükle" ile anında dolu bir dönem görebilirsin.
-
-Alternatif (hesapsız): Mac'te Xcode varsa `npx expo run:ios --device` uygulamayı geliştirme build'i olarak doğrudan telefona kurar; Expo Go gerekmez.
+Geliştirici menüsündeki (Profil › Geliştirici) "Demo dönem yükle" ile anında dolu bir dönem görebilirsin.
 
 ## Kontroller
 

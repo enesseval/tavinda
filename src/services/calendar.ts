@@ -1,4 +1,4 @@
-import * as Calendar from 'expo-calendar/legacy';
+import * as Calendar from 'expo-calendar';
 import { Linking } from 'react-native';
 
 import { addDays, dateAtTime, isoWeekday, minutesToTime, toLocalDate } from '../domain/dates';
