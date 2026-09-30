@@ -35,11 +35,9 @@
   },
   "devDependencies": {
     "@testing-library/react-native": "^13.3.3",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "~57.0.13",
-    "better-sqlite3": "^13.0.3",
     "jest": "^29.7.0",
     "jest-expo": "~57.0.5",
     "prettier": "^3.9.9",
@@ -71,5 +69,8 @@
     "moduleNameMapper": {
       "\\.css$": "<rootDir>/__tests__/styleStub.js"
     }
+  },
+  "engines": {
+    "node": ">=22.13"
   }
 }
