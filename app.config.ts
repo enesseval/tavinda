@@ -40,7 +40,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    package: process.env.ANDROID_PACKAGE ?? 'com.REPLACE.tavinda',
+    package: process.env.ANDROID_PACKAGE ?? 'com.tavinda.app',
     versionCode: Number(BUILD_NUMBER),
     adaptiveIcon: {
       backgroundColor: '#1C1B19',
