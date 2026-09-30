@@ -1,0 +1,73 @@
+import { Redirect, Tabs } from 'expo-router';
+import type { ComponentProps } from 'react';
+import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { AppText } from '../../components/AppText';
+import { CalendarTabIcon, ProfileTabIcon, TodayTabIcon } from '../../components/icons';
+import { t } from '../../i18n/tr';
+import { useAppData } from '../../services/data';
+import { useTheme } from '../../theme/theme';
+
+type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
+
+function TabBar({ state, navigation }: BottomTabBarProps) {
+  const { c } = useTheme();
+  const insets = useSafeAreaInsets();
+  const items = [
+    { name: 'index', label: t.tabs.today, Icon: TodayTabIcon },
+    { name: 'calendar', label: t.tabs.calendar, Icon: CalendarTabIcon },
+    { name: 'profile', label: t.tabs.profile, Icon: ProfileTabIcon },
+  ];
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={{
+        flexDirection: 'row',
+        paddingTop: 7,
+        paddingBottom: Math.max(insets.bottom, 8),
+        backgroundColor: c.bar,
+        borderTopWidth: 0.5,
+        borderTopColor: c.line,
+      }}
+    >
+      {items.map(({ name, label, Icon }) => {
+        const index = state.routes.findIndex((r) => r.name === name);
+        const focused = state.index === index;
+        const color = focused ? c.ink : c.ink3;
+        return (
+          <Pressable
+            key={name}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={label}
+            onPress={() => {
+              const route = state.routes[index];
+              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+              if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+            }}
+            style={{ flex: 1, alignItems: 'center', gap: 3, minHeight: 44 }}
+          >
+            <Icon color={color} bg={c.bg} active={focused} />
+            <AppText variant="tab" color={color} maxFontSizeMultiplier={1.2}>
+              {label}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export default function TabsLayout() {
+  const { settings } = useAppData();
+  const { c } = useTheme();
+  if (!settings.onboarded) return <Redirect href="/onboarding" />;
+  return (
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.bg } }}>
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="calendar" />
+      <Tabs.Screen name="profile" />
+    </Tabs>
+  );
+}

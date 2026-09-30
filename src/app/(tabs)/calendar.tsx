@@ -1,0 +1,104 @@
+import { addMonths, format } from 'date-fns';
+import { useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { AppText } from '../../components/AppText';
+import { DueHeader, DueList, MonthView, useDueRows, WeekView } from '../../components/calendar';
+import { Segmented } from '../../components/controls';
+import { Fab } from '../../components/Fab';
+import { addDays, parseLocalDate, startOfIsoWeek, toLocalDate } from '../../domain/dates';
+import { fmtIsoWeek } from '../../i18n/format';
+import { t } from '../../i18n/tr';
+import { useNow } from '../../services/clock';
+import { useAppData } from '../../services/data';
+import { useUi } from '../../store/ui';
+
+export default function CalendarScreen() {
+  const insets = useSafeAreaInsets();
+  const data = useAppData();
+  const { today } = useNow();
+  const view = useUi((s) => s.calendarView);
+  const setView = useUi((s) => s.setCalendarView);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
+  const dueRows = useDueRows(data, today);
+
+  const weekStart = addDays(startOfIsoWeek(today), weekOffset * 7);
+  const monthStart = toLocalDate(addMonths(parseLocalDate(`${today.slice(0, 7)}-01`), monthOffset));
+  const bottom = insets.bottom + 49 + 110;
+
+  const header = (
+    <View>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          paddingTop: 10,
+          paddingHorizontal: 20,
+        }}
+      >
+        <View style={{ gap: 2 }}>
+          <AppText variant="caption" tone="ink2">
+            {t.calendar.caption(format(parseLocalDate(today), 'yyyy'), fmtIsoWeek(today))}
+          </AppText>
+          <AppText variant="display" accessibilityRole="header">
+            {t.calendar.title}
+          </AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={10}
+          onPress={() => {
+            setWeekOffset(0);
+            setMonthOffset(0);
+            if (view === 'due') setView('week');
+          }}
+          style={{ marginBottom: 8 }}
+        >
+          <AppText variant="bodyLarge">{t.calendar.today}</AppText>
+        </Pressable>
+      </View>
+      <View style={{ marginTop: 14, marginHorizontal: 20 }}>
+        <Segmented
+          options={[
+            { value: 'week', label: t.calendar.segments.week },
+            { value: 'month', label: t.calendar.segments.month },
+            { value: 'due', label: t.calendar.segments.due },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={{ height: insets.top }} />
+      {view === 'due' ? (
+        <DueList
+          rows={dueRows}
+          footerHeight={bottom}
+          header={
+            <View>
+              {header}
+              <DueHeader rows={dueRows} warnDays={data.settings.warnDays} />
+            </View>
+          }
+        />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottom }}>
+          {header}
+          {view === 'week' ? (
+            <WeekView data={data} today={today} weekStart={weekStart} onShift={(n) => setWeekOffset((w) => w + n)} />
+          ) : (
+            <MonthView data={data} today={today} monthStart={monthStart} onShift={(n) => setMonthOffset((m) => m + n)} />
+          )}
+        </ScrollView>
+      )}
+      <Fab bottom={insets.bottom + 49 + 16} />
+    </View>
+  );
+}
