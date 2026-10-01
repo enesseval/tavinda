@@ -5,10 +5,11 @@ import { Stack, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { StartupError } from '../boot/BootGuard';
 import { ToastHost } from '../components/Toast';
 import { getDb } from '../db/client';
 import { runReconcile } from '../services/actions';
@@ -17,10 +18,6 @@ import { onRefresh, useAppData } from '../services/data';
 import { configureNotifications, rescheduleNotifications } from '../services/notifications';
 import { ThemeProvider, useTheme } from '../theme/theme';
 
-SplashScreen.preventAutoHideAsync().catch(() => undefined);
-
-/** Never leave the user on the splash screen: hide it after this long no matter what. */
-const SPLASH_FAILSAFE_MS = 4000;
 /** Fonts are cosmetic; start with system fonts if they take longer than this. */
 const FONT_TIMEOUT_MS = 2500;
 
@@ -28,69 +25,50 @@ function hideSplash() {
   SplashScreen.hideAsync().catch(() => undefined);
 }
 
-// Errors outside React (timers, promises) must not leave the splash on screen either.
-const errorUtils = (
-  globalThis as {
-    ErrorUtils?: {
-      getGlobalHandler(): (e: unknown, fatal?: boolean) => void;
-      setGlobalHandler(h: (e: unknown, fatal?: boolean) => void): void;
-    };
+const nextTick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Opens the DB (runs migrations), wires notifications to data changes and reconciles once.
+ * Each step is announced before it runs and the JS thread yields in between, so if a step
+ * ever hangs, the boot screen names it.
+ */
+async function boot(onStep: (step: string) => void): Promise<void> {
+  const steps: [string, () => void][] = [
+    ['veritabanı', () => void getDb()],
+    [
+      'bildirimler',
+      () => {
+        configureNotifications();
+        onRefresh(rescheduleNotifications);
+      },
+    ],
+    ['günlük düzenleme', () => runReconcile()],
+  ];
+  for (const [name, run] of steps) {
+    onStep(name);
+    await nextTick();
+    try {
+      run();
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      err.message = `[${name}] ${err.message}`;
+      throw err;
+    }
   }
-).ErrorUtils;
-if (errorUtils) {
-  const previous = errorUtils.getGlobalHandler();
-  errorUtils.setGlobalHandler((e, fatal) => {
-    hideSplash();
-    previous(e, fatal);
-  });
 }
 
-let bootError: Error | null = null;
-let booted = false;
+let bootPromise: Promise<void> | null = null;
 
-/** Opens the DB (runs migrations), wires notifications to data changes and reconciles once. */
-function bootOnce(): Error | null {
-  if (booted) return bootError;
-  booted = true;
-  let step = 'veritabanı';
-  try {
-    getDb();
-    step = 'bildirimler';
-    configureNotifications();
-    onRefresh(rescheduleNotifications);
-    step = 'günlük düzenleme';
-    runReconcile();
-  } catch (e) {
-    const err = e instanceof Error ? e : new Error(String(e));
-    err.message = `[${step}] ${err.message}`;
-    bootError = err;
-  }
-  return bootError;
-}
-
-/** Plain, dependency-free error screen so a release build shows what went wrong instead of hanging. */
-function StartupError({ error, retry }: { error: Error; retry?: () => void }) {
-  useEffect(hideSplash, []);
+/** Shown (instead of the splash) while booting; names the current step. */
+function Booting({ step }: { step: string }) {
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#F7F5F0' }} contentContainerStyle={{ padding: 24, paddingTop: 80, gap: 12 }}>
-      <Text style={{ fontSize: 22, fontWeight: '700', color: '#1C1B19' }}>Tavında açılamadı</Text>
-      <Text style={{ fontSize: 15, color: '#6B675F' }}>Bu ekranın görüntüsünü gönder; hatayı buradan bulacağız.</Text>
-      <Text selectable style={{ fontSize: 13, color: '#A3122A', fontFamily: 'Menlo' }}>
-        {error.name}: {error.message}
-      </Text>
-      <Text selectable style={{ fontSize: 11, color: '#6B675F', fontFamily: 'Menlo' }}>
-        {(error.stack ?? '').split('\n').slice(0, 12).join('\n')}
-      </Text>
-      {retry ? (
-        <Text onPress={retry} style={{ fontSize: 17, fontWeight: '600', color: '#1C1B19', paddingVertical: 12 }}>
-          Tekrar dene
-        </Text>
-      ) : null}
-    </ScrollView>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F7F5F0' }}>
+      <Text style={{ fontSize: 13, color: '#A8A399' }}>Açılıyor… {step}</Text>
+    </View>
   );
 }
 
-/** expo-router renders this when any route throws; it also hides the splash. */
+/** expo-router renders this when any route throws. */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
   return <StartupError error={error} retry={() => void retry()} />;
 }
@@ -155,30 +133,36 @@ export default function RootLayout() {
     BricolageGrotesque_600SemiBold: require('../../assets/fonts/BricolageGrotesque_600SemiBold.ttf'),
     BricolageGrotesque_700Bold: require('../../assets/fonts/BricolageGrotesque_700Bold.ttf'),
   });
-  const [boot, setBoot] = useState<{ done: boolean; error: Error | null }>({ done: false, error: null });
+  const [step, setStep] = useState('başlatılıyor');
+  const [status, setBoot] = useState<{ done: boolean; error: Error | null }>({ done: false, error: null });
   const [fontTimedOut, setFontTimedOut] = useState(false);
 
   useEffect(() => {
-    setBoot({ done: true, error: bootOnce() });
+    // The JS side is alive: swap the native splash for the boot screen right away.
+    hideSplash();
+    let alive = true;
+    bootPromise ??= boot(setStep);
+    bootPromise.then(
+      () => alive && setBoot({ done: true, error: null }),
+      (e: unknown) => alive && setBoot({ done: true, error: e instanceof Error ? e : new Error(String(e)) }),
+    );
     const fontTimer = setTimeout(() => setFontTimedOut(true), FONT_TIMEOUT_MS);
-    const splashTimer = setTimeout(hideSplash, SPLASH_FAILSAFE_MS);
     return () => {
+      alive = false;
       clearTimeout(fontTimer);
-      clearTimeout(splashTimer);
     };
   }, []);
 
-  const ready = boot.done && (fontsLoaded || !!fontError || fontTimedOut);
+  if (status.error) return <StartupError error={status.error} />;
 
-  useEffect(() => {
-    if (ready) hideSplash();
-  }, [ready]);
-
-  if (boot.error) return <StartupError error={boot.error} />;
+  const ready = status.done && (fontsLoaded || !!fontError || fontTimedOut);
+  if (!ready) return <Booting step={status.done ? 'yazı tipleri' : step} />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>{ready ? <Themed /> : null}</SafeAreaProvider>
+      <SafeAreaProvider>
+        <Themed />
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
