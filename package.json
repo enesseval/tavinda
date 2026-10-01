@@ -51,10 +51,11 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "bump:build": "node scripts/bump-build.js",
-    "ios:prebuild": "expo prebuild -p ios --clean",
+    "ios:prebuild": "expo prebuild -p ios --clean && node scripts/check-ios-modules.js",
     "ios:open": "node scripts/open-workspace.js",
     "ios:release": "npm run bump:build && npm run ios:prebuild",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"__tests__/**/*.{ts,tsx,js}\" app.config.ts"
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"__tests__/**/*.{ts,tsx,js}\" app.config.ts",
+    "ios:check": "node scripts/check-ios-modules.js"
   },
   "private": true,
   "jest": {
