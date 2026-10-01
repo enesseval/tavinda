@@ -10,6 +10,10 @@ const EXPO_PROJECT_ID = process.env.EXPO_PROJECT_ID ?? '79d704ef-3413-4f79-85d0-
 const EXPO_OWNER = process.env.EXPO_OWNER ?? 'enesseval';
 
 const CALENDAR_USAGE = 'Ders programını takviminden okumak için. Takvimine bir şey yazmayız.';
+// Never requested, but must exist: expo-calendar reads the reminders permission status when
+// its native module is created and raises a fatal exception if this key is missing, which
+// aborts registration of every Expo module after it ("Cannot find native module ...").
+const REMINDERS_USAGE = 'Tavında anımsatıcılarını kullanmaz; bu izin istenmez.';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -65,7 +69,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         dark: { image: './assets/splash-icon.png', backgroundColor: '#141312' },
       },
     ],
-    ['expo-calendar', { calendarPermission: CALENDAR_USAGE, remindersPermission: false }],
+    ['expo-calendar', { calendarPermission: CALENDAR_USAGE, remindersPermission: REMINDERS_USAGE }],
     '@react-native-community/datetimepicker',
   ],
   experiments: { typedRoutes: true },

@@ -36,16 +36,3 @@ export function nativeReport(): string {
     `expo.modules (${names.length}): ${names.join(', ') || '—'}`,
   ].join('\n');
 }
-
-/** True once Expo's JSI module registry exposes the given module. */
-export function hasExpoModule(name: string): boolean {
-  try {
-    // Loading expo-modules-core installs the JSI bindings if native has not yet.
-    const { requireOptionalNativeModule } = require('expo-modules-core') as {
-      requireOptionalNativeModule: (n: string) => unknown;
-    };
-    return requireOptionalNativeModule(name) != null;
-  } catch {
-    return false;
-  }
-}
