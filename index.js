@@ -5,12 +5,13 @@
 import '@expo/metro-runtime';
 
 import * as SplashScreen from 'expo-splash-screen';
-import { createElement } from 'react';
+import { createElement, useEffect, useState } from 'react';
 
 import { BootGuard, reportFatal } from './src/boot/BootGuard';
+import { hasExpoModule } from './src/boot/nativeDiagnostics';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
-setTimeout(() => SplashScreen.hideAsync().catch(() => undefined), 5000);
+setTimeout(() => SplashScreen.hideAsync().catch(() => undefined), 8000);
 
 if (global.ErrorUtils) {
   const previous = global.ErrorUtils.getGlobalHandler();
@@ -23,16 +24,38 @@ if (global.ErrorUtils) {
   });
 }
 
-let App = null;
-try {
+/** expo-router needs ExpoLinking the moment it loads; wait for native modules first. */
+const NATIVE_WAIT_MS = 5000;
+const NATIVE_POLL_MS = 50;
+
+function loadApp() {
   // require (not import) so a failure here is caught instead of hoisted above the guard.
-  App = require('expo-router/build/qualified-entry').App;
-} catch (e) {
-  reportFatal(e);
+  return require('expo-router/build/qualified-entry').App;
+}
+
+function Root() {
+  const [App, setApp] = useState(null);
+  useEffect(() => {
+    const started = Date.now();
+    let timer = null;
+    const tick = () => {
+      if (hasExpoModule('ExpoLinking') || Date.now() - started > NATIVE_WAIT_MS) {
+        try {
+          const app = loadApp();
+          setApp(() => app);
+        } catch (e) {
+          reportFatal(e);
+        }
+        return;
+      }
+      timer = setTimeout(tick, NATIVE_POLL_MS);
+    };
+    tick();
+    return () => clearTimeout(timer);
+  }, []);
+  return createElement(BootGuard, null, App ? createElement(App) : null);
 }
 
 const { renderRootComponent } = require('expo-router/build/renderRootComponent');
 
-renderRootComponent(function Root() {
-  return createElement(BootGuard, null, App ? createElement(App) : null);
-});
+renderRootComponent(Root);

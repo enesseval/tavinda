@@ -1,6 +1,8 @@
 import { Component, useSyncExternalStore, type ReactNode } from 'react';
 import { ScrollView, Text } from 'react-native';
 
+import { nativeReport } from './nativeDiagnostics';
+
 // Deliberately depends on nothing but react and react-native: it must work even when
 // the rest of the app fails to load.
 
@@ -25,6 +27,7 @@ function subscribe(l: () => void) {
 
 /** Plain error screen so a release build shows what went wrong instead of hanging. */
 export function StartupError({ error, retry }: { error: Error; retry?: () => void }) {
+  const report = nativeReport();
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#F7F5F0' }} contentContainerStyle={{ padding: 24, paddingTop: 80, gap: 12 }}>
       <Text style={{ fontSize: 22, fontWeight: '700', color: '#1C1B19' }}>Tavında açılamadı</Text>
@@ -33,7 +36,10 @@ export function StartupError({ error, retry }: { error: Error; retry?: () => voi
         {error.name}: {error.message}
       </Text>
       <Text selectable style={{ fontSize: 11, color: '#6B675F', fontFamily: 'Menlo' }}>
-        {(error.stack ?? '').split('\n').slice(0, 14).join('\n')}
+        {(error.stack ?? '').split('\n').slice(0, 6).join('\n')}
+      </Text>
+      <Text selectable style={{ fontSize: 11, color: '#1C1B19', fontFamily: 'Menlo' }}>
+        {report}
       </Text>
       {retry ? (
         <Text onPress={retry} style={{ fontSize: 17, fontWeight: '600', color: '#1C1B19', paddingVertical: 12 }}>
