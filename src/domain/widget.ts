@@ -47,7 +47,9 @@ function toWidgetTask(i: TodayItem): WidgetTask {
 export function getWidgetSnapshot(now: Date, data: AppData): WidgetSnapshot {
   const today = logicalDate(now, data.settings.cutoff);
   const model = buildTodayModel(data, today);
-  const live = model.groups.filter((g) => g.key === 'last' || g.key === 'today' || g.key === 'carried').flatMap((g) => g.items);
+  const live = model.groups
+    .filter((g) => g.key === 'overdue' || g.key === 'last' || g.key === 'today' || g.key === 'carried')
+    .flatMap((g) => g.items);
   const all = (model.hero ? [model.hero, ...live] : live).sort(compareHottest);
   return {
     version: 1,

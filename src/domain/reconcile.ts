@@ -1,5 +1,9 @@
+import { diffDays } from './dates';
 import type { Course, LocalDate, NewInstance, Task, TaskInstance } from './types';
 import { currentWeeklyWindow } from './windows';
+
+/** Unfinished work stays open as "Gecikti" this many days after its window ends, then closes. */
+export const OVERDUE_DAYS = 7;
 
 export interface ReconcileInput {
   today: LocalDate;
@@ -24,7 +28,8 @@ export function isReconcileNoop(r: ReconcileResult): boolean {
 
 /**
  * Brings stored instances in line with `today`:
- * 1. active instances whose window ended before today → missed
+ * 1. active instances whose window ended more than OVERDUE_DAYS ago → missed;
+ *    more recent ones stay active as overdue and are carried to today
  * 2. active instances scheduled before today → carried to today (not a user defer)
  * 3. weekly tasks get an instance for the window containing today
  * 4. deadline tasks get their single instance
@@ -36,7 +41,7 @@ export function reconcile({ today, courses, tasks, instances }: ReconcileInput):
 
   for (const inst of instances) {
     if (inst.status !== 'active') continue;
-    if (inst.windowEnd < today) {
+    if (diffDays(today, inst.windowEnd) > OVERDUE_DAYS) {
       update.push({ id: inst.id, changes: { status: 'missed' } });
     } else if (inst.scheduledDate < today) {
       update.push({ id: inst.id, changes: { scheduledDate: today } });

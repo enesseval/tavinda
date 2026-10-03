@@ -7,6 +7,7 @@ import { AppText } from '../../components/AppText';
 import { DueHeader, DueList, MonthView, useDueRows, WeekView } from '../../components/calendar';
 import { Segmented } from '../../components/controls';
 import { Fab } from '../../components/Fab';
+import { SwipePager } from '../../components/SwipePager';
 import { addDays, parseLocalDate, startOfIsoWeek, toLocalDate } from '../../domain/dates';
 import { fmtIsoWeek } from '../../i18n/format';
 import { t } from '../../i18n/tr';
@@ -93,9 +94,13 @@ export default function CalendarScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottom }}>
           {header}
           {view === 'week' ? (
-            <WeekView data={data} today={today} weekStart={weekStart} onShift={(n) => setWeekOffset((w) => w + n)} />
+            <SwipePager onPrev={() => setWeekOffset((w) => w - 1)} onNext={() => setWeekOffset((w) => w + 1)}>
+              <WeekView data={data} today={today} weekStart={weekStart} onShift={(n) => setWeekOffset((w) => w + n)} />
+            </SwipePager>
           ) : (
-            <MonthView data={data} today={today} monthStart={monthStart} onShift={(n) => setMonthOffset((m) => m + n)} />
+            <SwipePager onPrev={() => setMonthOffset((m) => m - 1)} onNext={() => setMonthOffset((m) => m + 1)}>
+              <MonthView data={data} today={today} monthStart={monthStart} onShift={(n) => setMonthOffset((m) => m + n)} />
+            </SwipePager>
           )}
         </ScrollView>
       )}

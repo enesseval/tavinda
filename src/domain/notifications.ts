@@ -47,7 +47,9 @@ export function planNotifications(data: AppData, now: Date, horizonDays = 7): Pl
     const model = buildTodayModel({ ...data, instances }, day);
 
     const morningAt = logicalDateTime(day, morningTime, cutoff);
-    const live = model.groups.filter((g) => g.key === 'last' || g.key === 'today' || g.key === 'carried').flatMap((g) => g.items);
+    const live = model.groups
+      .filter((g) => g.key === 'overdue' || g.key === 'last' || g.key === 'today' || g.key === 'carried')
+      .flatMap((g) => g.items);
     const all = model.hero ? [model.hero, ...live] : live;
 
     if (morningAt > now && all.length > 0) {

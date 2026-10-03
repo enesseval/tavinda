@@ -4,17 +4,25 @@ import { useMemo, type ReactElement } from 'react';
 import { View } from 'react-native';
 
 import { addDays, diffDays, isoWeekday, startOfIsoWeek, timeToMinutes } from '../domain/dates';
-import { heatFor, shareForInstance } from '../domain/heat';
-import { dayPlan, windowBars, type WindowBar } from '../domain/projection';
+import { heatFor, minutesDoneOn, shareForInstance } from '../domain/heat';
+import { dayPlan, windowRows, type WindowSegment } from '../domain/projection';
 import type { AppData, HeatLevel, LocalDate } from '../domain/types';
-import { fmtDayNum, fmtDayShortDate, fmtMinutes, fmtMonthYear, fmtRange, fmtWeekdayShort } from '../i18n/format';
+import {
+  fmtCompactMinutes,
+  fmtDayNum,
+  fmtDayShortDate,
+  fmtMinutes,
+  fmtMonthYear,
+  fmtRange,
+  fmtWeekdayShort,
+} from '../i18n/format';
 import { HEAT_NAMES, t, WEEKDAYS_SHORT } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
 import { radii, withAlpha } from '../theme/tokens';
 import { AppText } from './AppText';
 import { CoursePill } from './controls';
 import { GradientBar } from './GradientBar';
-import { ChevronLeft, ChevronRight, FlagIcon, LockIcon } from './icons';
+import { ChevronLeft, ChevronRight, FlagIcon } from './icons';
 import { Touchable } from './Touchable';
 
 function NavArrows({
@@ -54,9 +62,19 @@ function NavArrows({
 const HOUR_PX = 44;
 const GRID_LEFT = 46;
 
-function openBar(b: WindowBar) {
-  if (b.projected) router.push({ pathname: '/task/[id]', params: { id: String(b.task.id) } });
-  else router.push({ pathname: '/window/[id]', params: { id: String(b.instance.id) } });
+function openSegment(taskId: number, seg: WindowSegment) {
+  if (seg.projected) router.push({ pathname: '/task/[id]', params: { id: String(taskId) } });
+  else router.push({ pathname: '/window/[id]', params: { id: String(seg.instance.id) } });
+}
+
+/** Gradient stops centred on each day so neighbouring days blend, but a new window starts fresh. */
+function dayStops(heats: HeatLevel[], palette: readonly string[]) {
+  if (heats.length === 1)
+    return [
+      { offset: 0, color: palette[heats[0]] },
+      { offset: 1, color: palette[heats[0]] },
+    ];
+  return heats.map((h, i) => ({ offset: (i + 0.5) / heats.length, color: palette[h] }));
 }
 
 export function WeekView({
@@ -71,10 +89,10 @@ export function WeekView({
   onShift: (weeks: number) => void;
 }) {
   const { c } = useTheme();
-  const count = data.settings.showWeekend ? 7 : 5;
-  const days = useMemo(() => Array.from({ length: count }, (_, i) => addDays(weekStart, i)), [weekStart, count]);
+  const count = 7;
+  const days = useMemo(() => Array.from({ length: count }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const plans = useMemo(() => days.map((d) => dayPlan(data, today, d)), [data, today, days]);
-  const bars = useMemo(() => windowBars(data, today, days), [data, today, days]);
+  const rows = useMemo(() => windowRows(data, today, days), [data, today, days]);
   const total = plans.reduce((a, p) => a + p.totalMinutes, 0);
   const colW = 100 / count;
 
@@ -169,65 +187,63 @@ export function WeekView({
         {t.calendar.windows}
       </AppText>
       <View style={{ marginTop: 2, marginLeft: GRID_LEFT, marginRight: 12 }}>
-        {bars.length ? (
-          bars.map((b) => {
-            const left = b.fromCol * colW;
-            const width = (b.toCol - b.fromCol + 1) * colW;
-            const from = c.heat[b.heatFrom];
-            const to = c.heat[b.heatTo];
+        {rows.length ? (
+          rows.map((row) => {
+            const first = row.segments[0];
+            const lastSeg = row.segments[row.segments.length - 1];
+            const label = `${row.task.title}${row.course ? ` · ${row.course.shortName}` : ''}`;
             return (
-              <View key={`${b.instance.id}-${b.task.id}`} style={{ height: 36 }}>
-                <Touchable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${b.task.title}, ${HEAT_NAMES[b.heatTo]}`}
-                  onPress={() => openBar(b)}
+              <View key={row.task.id} style={{ height: 36 }}>
+                <AppText
+                  variant="micro"
+                  tone="ink2"
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.1}
                   style={{
                     position: 'absolute',
-                    top: 0,
-                    bottom: 0,
-                    left: `${left}%`,
-                    width: `${width}%`,
-                    justifyContent: 'flex-end',
-                    gap: 5,
-                    paddingBottom: 6,
+                    top: 6,
+                    left: `${first.fromCol * colW}%`,
+                    right: `${(count - 1 - lastSeg.toCol) * colW}%`,
+                    paddingLeft: first.clippedLeft ? 0 : 2,
                   }}
                 >
-                  <View
+                  {label}
+                </AppText>
+                {row.segments.map((seg) => (
+                  <Touchable
+                    key={seg.instance.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${label}, ${HEAT_NAMES[seg.heats[seg.heats.length - 1]]}`}
+                    onPress={() => openSegment(row.task.id, seg)}
                     style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 5,
-                      paddingLeft: b.clippedLeft ? 0 : 2,
-                      paddingRight: 2,
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: `${seg.fromCol * colW}%`,
+                      width: `${(seg.toCol - seg.fromCol + 1) * colW}%`,
+                      justifyContent: 'flex-end',
+                      paddingBottom: 6,
+                      paddingLeft: seg.clippedLeft ? 0 : 1,
+                      paddingRight: seg.clippedRight ? 0 : 1,
                     }}
                   >
-                    <AppText variant="micro" tone="ink2" numberOfLines={1} style={{ flexShrink: 1 }} maxFontSizeMultiplier={1.1}>
-                      {b.task.title}
-                      {b.course ? ` · ${b.course.shortName}` : ''}
-                    </AppText>
-                    <View style={{ flex: 1 }} />
-                    {b.lockInRange ? <LockIcon color={c.heat[4]} size={11} /> : null}
-                    {b.dueInRange ? <FlagIcon color={c.ink2} size={11} /> : null}
-                  </View>
-                  <View
-                    style={{
-                      borderTopLeftRadius: b.clippedLeft ? 0 : 3,
-                      borderBottomLeftRadius: b.clippedLeft ? 0 : 3,
-                      borderTopRightRadius: b.clippedRight ? 0 : 3,
-                      borderBottomRightRadius: b.clippedRight ? 0 : 3,
-                      overflow: 'hidden',
-                      opacity: b.instance.status === 'active' ? 1 : 0.4,
-                    }}
-                  >
-                    <GradientBar
-                      height={6}
-                      stops={[
-                        { offset: 0, color: from },
-                        { offset: 1, color: to },
-                      ]}
-                    />
-                  </View>
-                </Touchable>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', height: 14 }}>
+                      {seg.dueInRange ? <FlagIcon color={c.ink2} size={11} /> : null}
+                    </View>
+                    <View
+                      style={{
+                        borderTopLeftRadius: seg.clippedLeft ? 0 : 3,
+                        borderBottomLeftRadius: seg.clippedLeft ? 0 : 3,
+                        borderTopRightRadius: seg.clippedRight ? 0 : 3,
+                        borderBottomRightRadius: seg.clippedRight ? 0 : 3,
+                        overflow: 'hidden',
+                        opacity: seg.instance.status === 'active' ? 1 : 0.35,
+                      }}
+                    >
+                      <GradientBar height={6} stops={dayStops(seg.heats, c.heat)} />
+                    </View>
+                  </Touchable>
+                ))}
               </View>
             );
           })
@@ -362,11 +378,11 @@ export function MonthView({
     () =>
       cells.map((d) => {
         const p = dayPlan(data, today, d);
-        const heats = [...new Set(p.shares.map((s) => s.heat))].sort((a, b) => b - a).slice(0, 3) as HeatLevel[];
-        return { d, heats, flag: p.dues.length > 0 };
+        return { d, minutes: p.totalMinutes, flag: p.dues.length > 0, past: d < today };
       }),
     [cells, data, today],
   );
+  const weeks = useMemo(() => Array.from({ length: info.length / 7 }, (_, w) => info.slice(w * 7, w * 7 + 7)), [info]);
 
   return (
     <View>
@@ -396,70 +412,81 @@ export function MonthView({
           </AppText>
         ))}
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginHorizontal: 12, rowGap: 4 }}>
-        {info.map(({ d, heats, flag }) => {
-          const isT = d === today;
-          const other = d.slice(0, 7) !== month;
-          const weekend = isoWeekday(d) >= 6;
-          return (
-            <Touchable
-              key={d}
-              accessibilityRole="button"
-              accessibilityLabel={`${fmtDayShortDate(d)}${flag ? `, ${t.calendar.legendDue}` : ''}${heats.length ? `, ${HEAT_NAMES[heats[0]]}` : ''}`}
-              onPress={() => router.push({ pathname: '/day/[date]', params: { date: d } })}
-              style={({ pressed }) => ({
-                width: `${100 / 7}%`,
-                height: 62,
-                borderRadius: 12,
-                alignItems: 'center',
-                paddingTop: 6,
-                gap: 7,
-                backgroundColor: pressed ? c.surface2 : 'transparent',
-              })}
-            >
-              <View
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 15,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: isT ? c.ink : 'transparent',
-                }}
-              >
-                <AppText
-                  variant="bodyLarge"
-                  weight={isT ? '700' : '500'}
-                  color={isT ? c.bg : other || weekend ? c.ink3 : c.ink}
-                  tabular
-                  maxFontSizeMultiplier={1.1}
+      <View style={{ marginTop: 8, marginHorizontal: 12, gap: 4 }}>
+        {weeks.map((week) => (
+          <View key={week[0].d} style={{ flexDirection: 'row' }}>
+            {week.map(({ d, minutes, flag, past }) => {
+              const isT = d === today;
+              const other = d.slice(0, 7) !== month;
+              const summary = minutes > 0 ? (past ? `✓ ${fmtCompactMinutes(minutes)}` : fmtCompactMinutes(minutes)) : '';
+              return (
+                <Touchable
+                  key={d}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${fmtDayShortDate(d)}${flag ? `, ${t.calendar.legendDue}` : ''}${
+                    minutes > 0
+                      ? `, ${past ? t.calendar.doneA11y(fmtMinutes(minutes)) : t.calendar.planned(fmtMinutes(minutes))}`
+                      : ''
+                  }`}
+                  onPress={() => router.push({ pathname: '/day/[date]', params: { date: d } })}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    height: 62,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    paddingTop: 6,
+                    gap: 4,
+                    backgroundColor: pressed ? c.surface2 : 'transparent',
+                  })}
                 >
-                  {fmtDayNum(d)}
-                </AppText>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 3, opacity: d < today ? 0.45 : 1 }}>
-                {heats.map((h) => (
-                  <View key={h} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.heat[h] }} />
-                ))}
-              </View>
-              {flag ? (
-                <View style={{ position: 'absolute', top: 5, right: 5 }}>
-                  <FlagIcon color={c.ink2} size={11} filled />
-                </View>
-              ) : null}
-            </Touchable>
-          );
-        })}
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, rowGap: 8, marginTop: 16, marginHorizontal: 20 }}>
-        {HEAT_NAMES.map((n, i) => (
-          <View key={n} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.heat[i] }} />
-            <AppText variant="caption" tone="ink2">
-              {n}
-            </AppText>
+                  <View
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 15,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isT ? c.ink : 'transparent',
+                    }}
+                  >
+                    <AppText
+                      variant="bodyLarge"
+                      weight={isT ? '700' : '500'}
+                      color={isT ? c.bg : other ? c.ink3 : c.ink}
+                      tabular
+                      maxFontSizeMultiplier={1.1}
+                    >
+                      {fmtDayNum(d)}
+                    </AppText>
+                  </View>
+                  <AppText
+                    variant="micro"
+                    tone={past ? 'ink3' : 'ink2'}
+                    tabular
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1}
+                    style={{ fontSize: 10 }}
+                  >
+                    {summary}
+                  </AppText>
+                  {flag ? (
+                    <View style={{ position: 'absolute', top: 5, right: 3 }}>
+                      <FlagIcon color={c.ink2} size={10} filled />
+                    </View>
+                  ) : null}
+                </Touchable>
+              );
+            })}
           </View>
         ))}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, rowGap: 8, marginTop: 16, marginHorizontal: 20 }}>
+        <AppText variant="caption" tone="ink2">
+          {t.calendar.legendDone}
+        </AppText>
+        <AppText variant="caption" tone="ink2">
+          {t.calendar.legendPlanned}
+        </AppText>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
           <FlagIcon color={c.ink2} size={11} filled />
           <AppText variant="caption" tone="ink2">
@@ -500,7 +527,7 @@ export function useDueRows(data: AppData, today: LocalDate): DueRow[] {
         daysLeft: diffDays(inst.windowEnd, today),
         due: inst.windowEnd,
         progress: inst.progress,
-        share: shareForInstance(inst, task, today),
+        share: shareForInstance(inst, task, today, minutesDoneOn(data.progressLogs, inst.id, today, task.estimatedMinutes)),
         heat: heatFor(inst, task, today, data.settings),
         warnDays: task.warnDays ?? data.settings.warnDays,
       });

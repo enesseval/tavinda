@@ -13,6 +13,13 @@ export function fmtMinutes(m: number): string {
   return r ? `${h} sa ${r} dk` : `${h} sa`;
 }
 
+/** Narrow cells: '45 dk', '2 sa', '1,5 sa' (hours rounded to the half). */
+export function fmtCompactMinutes(m: number): string {
+  if (m < 60) return `${Math.max(5, Math.round(m / 5) * 5)} dk`;
+  const h = Math.round((m / 60) * 2) / 2;
+  return `${String(h).replace('.', ',')} sa`;
+}
+
 /** '1:25' for the task detail stat. */
 export function fmtHoursClock(m: number): string {
   const v = Math.max(0, Math.round(m / 5) * 5);

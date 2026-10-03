@@ -6,7 +6,7 @@ import { Alert, Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
-import { Card, Segmented, Stepper, Toggle } from '../../components/controls';
+import { Card, Segmented, Stepper } from '../../components/controls';
 import { Fab } from '../../components/Fab';
 import { SettingsGroup, SettingsRow } from '../../components/settings';
 import { dateAtTime, minutesToTime, parseLocalDate, timeToMinutes, toLocalDate } from '../../domain/dates';
@@ -188,10 +188,6 @@ export default function ProfileScreen() {
                 onInc={() => setSetting('cutoff', minutesToTime(Math.min(6, cutoffH + 1) * 60))}
               />
             }
-          />
-          <SettingsRow
-            label={t.settings.showWeekend}
-            right={<Toggle label={t.settings.showWeekend} value={s.showWeekend} onChange={(v) => setSetting('showWeekend', v)} />}
             last
           />
         </SettingsGroup>

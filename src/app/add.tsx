@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../components/AppText';
 import { ToastHost } from '../components/Toast';
 import { Button, Chip, Grabber, SectionLabel, Stepper } from '../components/controls';
-import { ChevronLeft, DoneBadge, FlagIcon, LockIcon, RepeatIcon } from '../components/icons';
+import { ChevronLeft, DoneBadge, FlagIcon, RepeatIcon } from '../components/icons';
 import { addDays, diffDays, parseLocalDate, toLocalDate } from '../domain/dates';
 import { deadlineHeatValues, deadlinePreviewRamp, suggestedDailyShare, weeklyBaseHeat } from '../domain/heat';
 import type { Course, Task } from '../domain/types';
@@ -361,13 +361,7 @@ export default function AddTask() {
                   }}
                 >
                   <Row c={c} label={t.add.windowStart} value={fmtLongDay(win.start)} />
-                  <Row
-                    c={c}
-                    label={t.add.windowEnd}
-                    value={fmtLongDay(win.end)}
-                    strong
-                    icon={<LockIcon color={c.heat[4]} size={13} />}
-                  />
+                  <Row c={c} label={t.add.windowEnd} value={fmtLongDay(win.end)} strong />
                   <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 16, gap: 8 }}>
                     <View style={{ flexDirection: 'row', gap: 3 }}>
                       {ramp.map((r) => (

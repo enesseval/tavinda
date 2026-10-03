@@ -56,6 +56,7 @@ export const t = {
     calmEmptyNoLong: 'Yeni bir iş eklemek için + düğmesine dokun.',
     calmAction: (title: string) => `${title} için ilerleme gir`,
     groups: {
+      overdue: 'Gecikenler',
       last: 'Son gün',
       today: 'Bugün',
       carried: 'Dünden taşınanlar',
@@ -74,6 +75,7 @@ export const t = {
     locked: 'Kilitli',
     carried: 'dünden',
     missed: 'kaçtı',
+    overdue: (days: number) => (days <= 1 ? 'Gecikti · dün bitmeliydi' : `Gecikti · ${days} gün`),
     lastDay: 'Bugün son gün · erteleme kapalı',
     lastChance: 'Bugün son gün · 1 erteleme hakkın var',
     remaining: (pct: number, time: string) => `Kalan %${pct} · ~${time}`,
@@ -135,7 +137,10 @@ export const t = {
     window: 'Pencere',
     windowStart: 'Başlangıç',
     windowEnd: 'Son gün',
-    rampNote: (cool: number) => (cool > 0 ? `İlk ${cool} gün serin. Son gün erteleme kapanır.` : 'Son gün erteleme kapanır.'),
+    rampNote: (cool: number) =>
+      cool > 0
+        ? `İlk ${cool} gün serin. Bir sonraki dersle döngü yeniden serin başlar.`
+        : 'Bir sonraki dersle döngü yeniden serin başlar.',
     estimate: 'Tahmini süre',
     perWeek: (time: string) => `${time} / hafta`,
     estimateNote: '15 dk adımlarla. Günlere kendiliğinden dağıtılır.',
@@ -213,6 +218,9 @@ export const t = {
     prevMonth: 'Önceki ay',
     nextMonth: 'Sonraki ay',
     legendDue: 'Teslim',
+    legendDone: '✓ yapılan',
+    legendPlanned: '2 sa planlanan',
+    doneA11y: (time: string) => `${time} iş yapıldı`,
     dueSummary: (n: number, days: number) =>
       n === 0 ? 'Teslim tarihli iş yok' : days <= 0 ? `${n} iş · en yakını bugün` : `${n} iş · en yakını ${days} gün sonra`,
     dueWarn: (n: number) => `teslime ${n} gün kala`,
@@ -226,7 +234,6 @@ export const t = {
     noClasses: 'Bu gün ders yok.',
     shares: 'Görev payları',
     total: (time: string) => `Toplam ${time}`,
-    weekendNoPlan: 'Hafta sonu. Plan yok.',
     noShares: 'Plan yok.',
     worked: 'Yapılanlar',
     dueBanner: (title: string, course: string | null) => `Teslim: ${title}${course ? ` · ${course}` : ''} · 23:59`,
@@ -263,7 +270,6 @@ export const t = {
     groupDay: 'Gün',
     cutoff: 'Günün bittiği saat',
     cutoffFoot: (time: string) => `${time}'dan önce yaptığın iş bir önceki güne sayılır.`,
-    showWeekend: 'Hafta sonunu göster',
     groupCalendar: 'Takvim ve kaynaklar',
     calendars: 'Okunan takvimler',
     calendarsValue: (n: number) => (n ? `${n} takvim` : 'Tümü'),

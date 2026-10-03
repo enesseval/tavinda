@@ -12,6 +12,8 @@ export type DeferState = 'open' | 'lastChance' | 'locked' | 'inactive';
 export function deferState(inst: TaskInstance, today: LocalDate, settings: Pick<Settings, 'lockMode'>): DeferState {
   if (inst.status !== 'active') return 'inactive';
   if (today < inst.windowEnd) return 'open';
+  // Overdue work can't be pushed further; it waits until it is done.
+  if (today > inst.windowEnd) return 'locked';
   if (settings.lockMode === 'flexible' && inst.lockUnlockedOn !== today) return 'lastChance';
   return 'locked';
 }

@@ -11,13 +11,26 @@ export function windowLength(inst: Pick<TaskInstance, 'windowStart' | 'windowEnd
   return diffDays(inst.windowEnd, inst.windowStart) + 1;
 }
 
-/** Heat purely from position in a weekly window (no progress penalty). */
+/** Share of the window that stays Serin regardless of progress. */
+const WEEKLY_COOL_SHARE = 0.4;
+
+/**
+ * Heat purely from position in a weekly window: the first ~40% is Serin, then
+ * Ilık, Sıcak, Kızgın, and the last day is Son gün. For a Monday class:
+ * Pzt–Çar serin, Per ılık, Cum sıcak, Cmt kızgın, Paz son gün.
+ */
 export function weeklyBaseHeat(dayIndex: number, length: number): HeatLevel {
   if (dayIndex >= length - 1) return 4;
   const r = length > 1 ? dayIndex / (length - 1) : 1;
-  if (r < 0.45) return 0;
-  if (r < 0.7) return 1;
-  return 2;
+  if (r < WEEKLY_COOL_SHARE) return 0;
+  if (r < 0.6) return 1;
+  if (r < 0.75) return 2;
+  return 3;
+}
+
+/** Active work whose window has already ended ("Gecikti"). */
+export function isOverdue(inst: Pick<TaskInstance, 'status' | 'windowEnd'>, today: LocalDate): boolean {
+  return inst.status === 'active' && today > inst.windowEnd;
 }
 
 export function weeklyHeat(inst: TaskInstance, today: LocalDate): HeatLevel {
@@ -26,8 +39,9 @@ export function weeklyHeat(inst: TaskInstance, today: LocalDate): HeatLevel {
   const dayIndex = Math.max(0, Math.min(len - 1, diffDays(today, inst.windowStart)));
   const base = weeklyBaseHeat(dayIndex, len);
   if (base === 4) return 4;
-  const remaining = 100 - inst.progress;
-  return remaining > 50 ? clampHeat(Math.min(3, base + 1)) : base;
+  // Falling behind only matters once the cool days are over.
+  const late = dayIndex / Math.max(1, len - 1) >= WEEKLY_COOL_SHARE;
+  return late && 100 - inst.progress > 50 ? clampHeat(Math.min(3, base + 1)) : base;
 }
 
 /** Days from today to due date, inclusive of both. */
@@ -109,23 +123,49 @@ export function paceForInstance(
   return paceFor(remainingMinutes(inst.progress, task.estimatedMinutes), daysLeft, budgetFor(task, settings));
 }
 
-function ceilTo5(n: number): number {
-  return Math.ceil(n / 5) * 5;
+/** Work this small is done in one sitting instead of being spread over days. */
+export const ONE_SITTING_MINUTES = 45;
+/** Smallest daily share worth sitting down for. */
+export const MIN_SHARE_MINUTES = 30;
+
+function ceilTo15(n: number): number {
+  return Math.ceil(n / 15) * 15;
 }
 
 /**
- * Suggested daily share: aim to finish one day early, rounded up to 5 minutes.
- * ceil(remaining / max(1, daysLeft − 1)).
+ * Suggested daily share: aim to finish one day early, but never in crumbs.
+ * Up to 45 min is one sitting; bigger work gets at least 30 min a day,
+ * rounded up to 15 minutes and capped at what is left.
  */
 export function suggestedDailyShare(remainingMin: number, daysLeft: number): number {
   if (remainingMin <= 0) return 0;
-  return ceilTo5(Math.ceil(remainingMin / Math.max(1, daysLeft - 1)));
+  if (remainingMin <= ONE_SITTING_MINUTES) return remainingMin;
+  const raw = Math.ceil(remainingMin / Math.max(1, daysLeft - 1));
+  return Math.min(remainingMin, Math.max(MIN_SHARE_MINUTES, ceilTo15(raw)));
 }
 
-export function shareForInstance(inst: TaskInstance, task: Task, today: LocalDate): number {
+/** Minutes of work logged for an instance on `day` (from progress logs). */
+export function minutesDoneOn(
+  logs: { instanceId: number; logicalDate: LocalDate; fromPct: number; toPct: number }[],
+  instanceId: number,
+  day: LocalDate,
+  estimatedMinutes: number,
+): number {
+  let pct = 0;
+  for (const l of logs) if (l.instanceId === instanceId && l.logicalDate === day) pct += l.toPct - l.fromPct;
+  return Math.max(0, Math.round((pct * estimatedMinutes) / 100));
+}
+
+/**
+ * Today's share still open. The plan is made from where the day started, so
+ * work already logged today counts against it ("Bugünlük tamam" at 0).
+ */
+export function shareForInstance(inst: TaskInstance, task: Task, today: LocalDate, doneTodayMinutes = 0): number {
   if (inst.status !== 'active') return 0;
   const daysLeft = Math.max(1, daysLeftInclusive(inst.windowEnd, today));
-  return suggestedDailyShare(remainingMinutes(inst.progress, task.estimatedMinutes), daysLeft);
+  const remaining = remainingMinutes(inst.progress, task.estimatedMinutes);
+  const planned = suggestedDailyShare(remaining + doneTodayMinutes, daysLeft);
+  return Math.min(remaining, Math.max(0, planned - doneTodayMinutes));
 }
 
 export interface HeatRankable {

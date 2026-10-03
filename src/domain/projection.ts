@@ -1,5 +1,5 @@
 import { addDays, diffDays, maxDate, minDate } from './dates';
-import { heatFor, remainingMinutes, shareForInstance } from './heat';
+import { heatFor, minutesDoneOn, remainingMinutes, shareForInstance, weeklyBaseHeat } from './heat';
 import { applyReconcile, reconcile } from './reconcile';
 import { coursesOn, isLongTerm } from './today';
 import type { AppData, Course, HeatLevel, LocalDate, Task, TaskInstance } from './types';
@@ -14,6 +14,19 @@ export function projectInstances(data: AppData, today: LocalDate, day: LocalDate
   let next = -1;
   const result = reconcile({ today: day, courses: data.courses, tasks: data.tasks, instances: data.instances });
   return applyReconcile(data.instances, result, () => next--);
+}
+
+/** Like projectInstances, but every future day in `days` gets its windows (for multi-week views). */
+export function projectRange(data: AppData, today: LocalDate, days: LocalDate[]): TaskInstance[] {
+  let instances = data.instances;
+  let next = -1;
+  for (const day of days) {
+    if (day <= today) continue;
+    const result = reconcile({ today: day, courses: data.courses, tasks: data.tasks, instances });
+    // Projection only adds windows; it never closes the real ones.
+    instances = applyReconcile(instances, { create: result.create, update: [] }, () => next--);
+  }
+  return instances;
 }
 
 export interface DayShare {
@@ -74,7 +87,8 @@ export function dayPlan(data: AppData, today: LocalDate, day: LocalDate): DayPla
       if (!task) continue;
       const heat = heatFor(inst, task, day, data.settings);
       if (isLongTerm(task, inst, day, heat)) continue;
-      const minutes = shareForInstance(inst, task, day);
+      const done = day === today ? minutesDoneOn(data.progressLogs, inst.id, day, task.estimatedMinutes) : 0;
+      const minutes = shareForInstance(inst, task, day, done);
       if (minutes <= 0) continue;
       shares.push({
         instance: inst,
@@ -104,31 +118,50 @@ export function dayPlan(data: AppData, today: LocalDate, day: LocalDate): DayPla
   };
 }
 
-export interface WindowBar {
+export interface WindowSegment {
   instance: TaskInstance;
-  task: Task;
-  course: Course | null;
   /** Column indexes inside the visible range. */
   fromCol: number;
   toCol: number;
   clippedLeft: boolean;
   clippedRight: boolean;
-  heatFrom: HeatLevel;
-  heatTo: HeatLevel;
-  lockInRange: boolean;
+  /** Heat for each visible day of the segment, left to right. */
+  heats: HeatLevel[];
   dueInRange: boolean;
   projected: boolean;
 }
 
-/** Task windows overlapping the visible days (consecutive LocalDates). */
-export function windowBars(data: AppData, today: LocalDate, days: LocalDate[]): WindowBar[] {
+/** One task per row; consecutive weekly windows sit side by side so each cycle restarts cool. */
+export interface WindowRow {
+  task: Task;
+  course: Course | null;
+  segments: WindowSegment[];
+}
+
+/** Heat a window shows on `day`: weekly windows follow the time ramp, deadlines their pace. */
+export function windowDayHeat(
+  inst: TaskInstance,
+  task: Task,
+  day: LocalDate,
+  today: LocalDate,
+  settings: AppData['settings'],
+): HeatLevel {
+  if (task.kind === 'weekly') {
+    const len = diffDays(inst.windowEnd, inst.windowStart) + 1;
+    return weeklyBaseHeat(Math.max(0, Math.min(len - 1, diffDays(day, inst.windowStart))), len);
+  }
+  return heatFor({ ...inst, status: 'active' }, task, maxDate(day, today), settings);
+}
+
+/** Task windows overlapping the visible days (consecutive LocalDates), grouped per task. */
+export function windowRows(data: AppData, today: LocalDate, days: LocalDate[]): WindowRow[] {
   if (!days.length) return [];
   const first = days[0];
   const last = days[days.length - 1];
   const tasks = new Map(data.tasks.filter((t) => !t.archivedAt).map((t) => [t.id, t]));
   const courses = new Map(data.courses.map((c) => [c.id, c]));
-  const pool = projectInstances(data, today, maxDate(today, last));
-  const bars: WindowBar[] = [];
+  const pool = projectRange(data, today, days);
+  const rows = new Map<number, WindowRow>();
   const colOf = (d: LocalDate) => days.indexOf(d);
 
   for (const inst of pool) {
@@ -137,30 +170,36 @@ export function windowBars(data: AppData, today: LocalDate, days: LocalDate[]): 
     if (inst.windowEnd < first || inst.windowStart > last) continue;
     const s = maxDate(inst.windowStart, first);
     const e = minDate(inst.windowEnd, last);
-    let fromCol = colOf(s);
-    let toCol = colOf(e);
-    // Hidden weekend columns: snap to nearest visible day.
-    for (let d = s; fromCol < 0 && d <= e; d = addDays(d, 1)) fromCol = colOf(d);
-    for (let d = e; toCol < 0 && d >= s; d = addDays(d, -1)) toCol = colOf(d);
+    const fromCol = colOf(s);
+    const toCol = colOf(e);
     if (fromCol < 0 || toCol < 0) continue;
-    const at = (d: LocalDate): HeatLevel =>
-      inst.status === 'active' ? heatFor(inst, task, maxDate(d, today), data.settings) : (0 as HeatLevel);
-    bars.push({
-      instance: inst,
+    const heats: HeatLevel[] = [];
+    for (let d = s; d <= e; d = addDays(d, 1)) heats.push(windowDayHeat(inst, task, d, today, data.settings));
+    const row = rows.get(task.id) ?? {
       task,
       course: task.courseId != null ? (courses.get(task.courseId) ?? null) : null,
+      segments: [],
+    };
+    row.segments.push({
+      instance: inst,
       fromCol,
       toCol,
-      clippedLeft: inst.windowStart < first || colOf(inst.windowStart) < 0,
-      clippedRight: inst.windowEnd > last || colOf(inst.windowEnd) < 0,
-      heatFrom: at(s),
-      heatTo: at(e),
-      lockInRange: task.kind === 'weekly' && inst.windowEnd <= last && inst.windowEnd >= first,
+      clippedLeft: inst.windowStart < first,
+      clippedRight: inst.windowEnd > last,
+      heats,
       dueInRange: task.kind === 'deadline' && inst.windowEnd <= last && inst.windowEnd >= first,
       projected: inst.id < 0,
     });
+    rows.set(task.id, row);
   }
-  return bars.sort((a, b) => a.fromCol - b.fromCol || a.toCol - b.toCol);
+  const out = [...rows.values()];
+  for (const r of out) r.segments.sort((a, b) => a.fromCol - b.fromCol);
+  return out.sort(
+    (a, b) =>
+      a.segments[0].fromCol - b.segments[0].fromCol ||
+      a.segments[a.segments.length - 1].toCol - b.segments[b.segments.length - 1].toCol ||
+      a.task.id - b.task.id,
+  );
 }
 
 export type HistoryDayKind = 'past' | 'today' | 'future' | 'deferred';

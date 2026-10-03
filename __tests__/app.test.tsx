@@ -110,7 +110,7 @@ describe('app smoke test', () => {
     renderRouter('./src/app', { initialUrl: '/calendar' });
     await screen.findByText('Görev pencereleri');
     fireEvent.press(screen.getByText('Ay'));
-    expect(await screen.findByText('Kızgın')).toBeTruthy();
+    expect(await screen.findByText('✓ yapılan')).toBeTruthy();
     fireEvent.press(screen.getByText('Teslimler'));
     expect(await screen.findAllByText('günlük pay')).not.toHaveLength(0);
   });

@@ -1,12 +1,21 @@
 import { addDays, diffDays, isoWeekday } from './dates';
 import { canDefer, deferState, type DeferState } from './defer';
-import { compareHottest, daysLeftInclusive, heatFor, paceForInstance, remainingMinutes, shareForInstance } from './heat';
+import {
+  compareHottest,
+  daysLeftInclusive,
+  heatFor,
+  isOverdue,
+  paceForInstance,
+  remainingMinutes,
+  shareForInstance,
+} from './heat';
+import { OVERDUE_DAYS } from './reconcile';
 import type { AppData, Course, HeatLevel, LocalDate, Task, TaskInstance } from './types';
 
 /** Deadline tasks further out than this live only in the long-term strip. */
 export const LONG_TERM_DAYS = 14;
 
-export type TodayGroupKey = 'last' | 'today' | 'carried' | 'upcoming' | 'ended';
+export type TodayGroupKey = 'overdue' | 'last' | 'today' | 'carried' | 'upcoming' | 'ended';
 
 export interface TodayItem {
   instance: TaskInstance;
@@ -18,7 +27,13 @@ export interface TodayItem {
   remainingPct: number;
   remainingMinutes: number;
   shareMinutes: number;
+  /** Minutes logged on this instance today. */
+  doneTodayMinutes: number;
   carried: boolean;
+  /** Window ended but the work is still open ("Gecikti"). */
+  overdue: boolean;
+  /** Days past the window end, 0 when not overdue. */
+  overdueDays: number;
   canDefer: boolean;
   deferState: DeferState;
   group: TodayGroupKey;
@@ -53,6 +68,7 @@ export function makeItem(
   course: Course | null,
   today: LocalDate,
   settings: AppData['settings'],
+  doneTodayMinutes = 0,
 ): Omit<TodayItem, 'group'> {
   const heat = instance.status === 'active' ? heatFor(instance, task, today, settings) : (0 as HeatLevel);
   return {
@@ -64,8 +80,11 @@ export function makeItem(
     daysLeft: Math.max(0, daysLeftInclusive(instance.windowEnd, today)),
     remainingPct: 100 - instance.progress,
     remainingMinutes: remainingMinutes(instance.progress, task.estimatedMinutes),
-    shareMinutes: shareForInstance(instance, task, today),
+    shareMinutes: shareForInstance(instance, task, today, doneTodayMinutes),
+    doneTodayMinutes,
     carried: instance.windowStart < today && (instance.progress > 0 || instance.deferCount > 0),
+    overdue: isOverdue(instance, today),
+    overdueDays: isOverdue(instance, today) ? diffDays(today, instance.windowEnd) : 0,
     canDefer: canDefer(instance, today, settings),
     deferState: deferState(instance, today, settings),
   };
@@ -101,7 +120,8 @@ export function buildTodayModel(data: AppData, today: LocalDate): TodayModel {
     const task = taskById.get(inst.taskId);
     if (!task) continue;
     const course = task.courseId != null ? (courseById.get(task.courseId) ?? null) : null;
-    const base = makeItem(inst, task, course, today, data.settings);
+    const doneToday = Math.round(((minutesToday.get(inst.id) ?? 0) * task.estimatedMinutes) / 100);
+    const base = makeItem(inst, task, course, today, data.settings, Math.max(0, doneToday));
 
     if (inst.status === 'active') {
       if (isLongTerm(task, inst, today, base.heat) && inst.scheduledDate <= today) {
@@ -109,22 +129,27 @@ export function buildTodayModel(data: AppData, today: LocalDate): TodayModel {
         continue;
       }
       let group: TodayGroupKey;
-      if (inst.scheduledDate > today) group = 'upcoming';
+      if (base.overdue) group = 'overdue';
+      else if (inst.scheduledDate > today) group = 'upcoming';
       else if (base.heat === 4) group = 'last';
       else if (base.carried) group = 'carried';
       else group = 'today';
       items.push({ ...base, group });
     } else if (inst.status === 'done' && finishedToday.has(inst.id)) {
       items.push({ ...base, group: 'ended' });
-    } else if (inst.status === 'missed' && inst.windowEnd === yesterday) {
+    } else if (inst.status === 'missed' && inst.windowEnd === addDays(yesterday, -OVERDUE_DAYS)) {
       items.push({ ...base, group: 'ended' });
     }
   }
 
-  const todayish = items.filter((i) => i.group === 'last' || i.group === 'today' || i.group === 'carried');
-  const hero = [...todayish].sort(compareHottest)[0] ?? null;
+  const todayish = items.filter(
+    (i) => i.group === 'overdue' || i.group === 'last' || i.group === 'today' || i.group === 'carried',
+  );
+  // Work that can still be done on time comes first; overdue work leads only when nothing else is open.
+  const onTime = todayish.filter((i) => !i.overdue);
+  const hero = [...(onTime.length ? onTime : todayish)].sort(compareHottest)[0] ?? null;
 
-  const order: TodayGroupKey[] = ['last', 'today', 'carried', 'upcoming', 'ended'];
+  const order: TodayGroupKey[] = ['overdue', 'last', 'today', 'carried', 'upcoming', 'ended'];
   const groups = order
     .map((key) => ({
       key,

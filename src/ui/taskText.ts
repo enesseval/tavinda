@@ -1,5 +1,4 @@
 import type { TaskCardModel } from '../components/TaskCard';
-import { addDays } from '../domain/dates';
 import type { TodayItem } from '../domain/today';
 import type { LocalDate } from '../domain/types';
 import { fmtMinutes, fmtRelativeDay, fmtShortDate, fmtWeekday } from '../i18n/format';
@@ -10,8 +9,9 @@ export function cardSub(i: Omit<TodayItem, 'group'>, today: LocalDate): string {
   const inst = i.instance;
   if (inst.status === 'done') return t.card.done;
   if (inst.status === 'missed') {
-    return inst.windowEnd === addDays(today, -1) ? t.card.missedAt : fmtShortDate(inst.windowEnd);
+    return fmtShortDate(inst.windowEnd);
   }
+  if (i.overdue) return t.card.overdue(i.overdueDays);
   if (inst.scheduledDate > today) return t.card.deferredTo(fmtRelativeDay(inst.scheduledDate, today));
   if (i.heat === 4) return i.deferState === 'lastChance' ? t.card.lastChance : t.card.lastDay;
   if (i.heat === 3) return t.card.tooMuch(fmtMinutes(i.remainingMinutes));
@@ -32,7 +32,7 @@ export function toCardModel(i: Omit<TodayItem, 'group'>, today: LocalDate, leavi
     carried: i.carried,
     done: i.instance.status === 'done',
     missed: i.instance.status === 'missed',
-    locked: i.heat === 4 && i.deferState === 'locked',
+    locked: i.heat === 4 && i.deferState === 'locked' && !i.overdue,
     leaving,
   };
 }

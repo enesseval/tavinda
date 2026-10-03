@@ -9,17 +9,20 @@ import {
   diffDays,
   getWidgetSnapshot,
   heatFor,
+  isOverdue,
   isReconcileNoop,
   logicalDate,
   parseLocalDate,
   planNotifications,
   reconcile,
+  shareForInstance,
   snapProgress,
   suggestedDailyShare,
   weeklyBaseHeat,
   weeklyHeat,
   weeklyWindow,
   currentWeeklyWindow,
+  windowRows,
   type TaskInstance,
 } from '../src/domain';
 import { appData, course, deadlineTask, instance, settings, weeklyTask } from './fixtures';
@@ -54,12 +57,21 @@ describe('required domain tests', () => {
     expect(canDefer(inst, '2026-10-05', { lockMode: 'strict' })).toBe(true);
   });
 
-  test('4. logical 2026-10-07 with 80% → missed, new window 2026-10-07..2026-10-13', () => {
+  test('4. logical 2026-10-07 with 80% → stays open as overdue, new window 2026-10-07..2026-10-13', () => {
     const old = instance({ progress: 80, scheduledDate: '2026-10-06' });
     const r = reconcile({ today: '2026-10-07', courses: [course()], tasks: [weeklyTask()], instances: [old] });
-    expect(r.update).toEqual([{ id: 100, changes: { status: 'missed' } }]);
+    expect(r.update).toEqual([{ id: 100, changes: { scheduledDate: '2026-10-07' } }]);
     expect(r.create).toHaveLength(1);
     expect(r.create[0]).toMatchObject({ windowStart: '2026-10-07', windowEnd: '2026-10-13', scheduledDate: '2026-10-07' });
+    expect(isOverdue(old, '2026-10-07')).toBe(true);
+    expect(canDefer(old, '2026-10-07', { lockMode: 'flexible' })).toBe(false);
+  });
+
+  test('4b. overdue work closes as missed after OVERDUE_DAYS', () => {
+    const old = instance({ progress: 80, scheduledDate: '2026-10-13' });
+    expect(reconcile({ today: '2026-10-13', courses: [course()], tasks: [weeklyTask()], instances: [old] }).update).toEqual([]);
+    const r = reconcile({ today: '2026-10-14', courses: [course()], tasks: [weeklyTask()], instances: [old] });
+    expect(r.update).toEqual([{ id: 100, changes: { status: 'missed' } }]);
   });
 
   test('5. save at 2026-10-07 02:30 with cutoff 04:00 counts for 2026-10-06', () => {
@@ -118,22 +130,38 @@ describe('dates', () => {
 });
 
 describe('heat', () => {
-  test('weekly base ramp matches the design (serin ×3, ılık ×2, sıcak, son gün)', () => {
-    expect([0, 1, 2, 3, 4, 5, 6].map((d) => weeklyBaseHeat(d, 7))).toEqual([0, 0, 0, 1, 1, 2, 4]);
+  test('weekly ramp: 3 cool days, then ılık, sıcak, kızgın, son gün', () => {
+    expect([0, 1, 2, 3, 4, 5, 6].map((d) => weeklyBaseHeat(d, 7))).toEqual([0, 0, 0, 1, 2, 3, 4]);
   });
 
-  test('weekly heat +1 when more than half remains (max 3)', () => {
-    expect(weeklyHeat(instance({ progress: 0 }), '2026-09-30')).toBe(1);
-    expect(weeklyHeat(instance({ progress: 60 }), '2026-09-30')).toBe(0);
+  test('weekly heat: cool days stay serin; +1 after them when more than half remains (max 3)', () => {
+    // Window Wed 30 Sep … Tue 6 Oct.
+    expect(weeklyHeat(instance({ progress: 0 }), '2026-09-30')).toBe(0);
+    expect(weeklyHeat(instance({ progress: 0 }), '2026-10-02')).toBe(0);
+    expect(weeklyHeat(instance({ progress: 0 }), '2026-10-03')).toBe(2);
+    expect(weeklyHeat(instance({ progress: 60 }), '2026-10-03')).toBe(1);
     expect(weeklyHeat(instance({ progress: 0 }), '2026-10-05')).toBe(3);
-    expect(weeklyHeat(instance({ progress: 60 }), '2026-10-05')).toBe(2);
+    expect(weeklyHeat(instance({ progress: 60 }), '2026-10-05')).toBe(3);
+    expect(weeklyHeat(instance({ progress: 60 }), '2026-10-07')).toBe(4);
   });
 
-  test('suggested share aims one day early, rounded up to 5 minutes', () => {
-    expect(suggestedDailyShare(600, 61)).toBe(10);
+  test('daily share: small work in one sitting, otherwise ≥30 min in 15-min steps, one day early', () => {
+    expect(suggestedDailyShare(15, 3)).toBe(15);
+    expect(suggestedDailyShare(45, 7)).toBe(45);
+    expect(suggestedDailyShare(600, 61)).toBe(30);
     expect(suggestedDailyShare(90, 4)).toBe(30);
-    expect(suggestedDailyShare(35, 1)).toBe(35);
+    expect(suggestedDailyShare(240, 3)).toBe(120);
+    expect(suggestedDailyShare(50, 1)).toBe(50);
     expect(suggestedDailyShare(0, 5)).toBe(0);
+  });
+
+  test("work logged today counts against today's share", () => {
+    // 120 min task, window ends in 3 days; 75 min done today (progress 62%).
+    const task = weeklyTask({ estimatedMinutes: 120 });
+    const inst = instance({ progress: 62, windowEnd: '2026-10-02' });
+    expect(shareForInstance(instance({ windowEnd: '2026-10-02' }), task, '2026-09-30')).toBe(60);
+    expect(shareForInstance(inst, task, '2026-09-30', 75)).toBe(0);
+    expect(shareForInstance(instance({ progress: 25, windowEnd: '2026-10-02' }), task, '2026-09-30', 30)).toBe(30);
   });
 
   test('heatFor dispatches by kind', () => {
@@ -195,5 +223,17 @@ describe('today model, widget and notifications', () => {
     expect(plan.some((p) => p.kind === 'lastDayEvening' && p.day === '2026-10-02' && p.instanceId === 200)).toBe(true);
     expect(plan.some((p) => p.kind === 'lastDayMorning' && p.day === '2026-10-06')).toBe(true);
     expect(plan.every((p) => p.fireAt.getTime() > new Date(2026, 8, 30, 12, 10).getTime())).toBe(true);
+  });
+});
+
+describe('week window rows', () => {
+  test('one row per task; the next weekly window starts cool right after the last day', () => {
+    const data = appData({ courses: [course()], tasks: [weeklyTask()], instances: [instance({ progress: 20 })] });
+    const days = Array.from({ length: 7 }, (_, i) => addDays('2026-10-05', i));
+    const rows = windowRows(data, '2026-10-05', days);
+    expect(rows).toHaveLength(1);
+    const [cur, next] = rows[0].segments;
+    expect(cur).toMatchObject({ fromCol: 0, toCol: 1, clippedLeft: true, heats: [3, 4], projected: false });
+    expect(next).toMatchObject({ fromCol: 2, toCol: 6, clippedRight: true, heats: [0, 0, 0, 1, 2], projected: true });
   });
 });

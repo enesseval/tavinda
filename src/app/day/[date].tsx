@@ -6,7 +6,7 @@ import { AppText } from '../../components/AppText';
 import { CloseButton } from '../../components/controls';
 import { FlagIcon, LockIcon } from '../../components/icons';
 import { Sheet } from '../../components/Sheet';
-import { isLocalDate, isoWeekday } from '../../domain/dates';
+import { isLocalDate } from '../../domain/dates';
 import { dayPlan } from '../../domain/projection';
 import { fmtLongDay, fmtMinutes } from '../../i18n/format';
 import { HEAT_NAMES, t } from '../../i18n/tr';
@@ -161,7 +161,7 @@ export default function DaySheet() {
           ))
         ) : (
           <AppText variant="body" tone="ink3">
-            {isoWeekday(plan.day) >= 6 ? t.calendar.weekendNoPlan : t.calendar.noShares}
+            {t.calendar.noShares}
           </AppText>
         )}
       </View>
