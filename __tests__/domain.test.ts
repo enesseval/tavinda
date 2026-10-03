@@ -20,6 +20,7 @@ import {
   shareForInstance,
   snapProgress,
   suggestedDailyShare,
+  taskListModel,
   weeklyBaseHeat,
   weeklyHeat,
   weeklyWindow,
@@ -265,5 +266,29 @@ describe('countdown and deadline reminders', () => {
     expect(alarm?.fireAt.getTime()).toBe(new Date(2026, 9, 20, 16, 50).getTime());
     const off = planNotifications(appData({ tasks: [{ ...task, alarmMinutes: null }], instances: [inst] }), now, 1);
     expect(off.some((p) => p.kind === 'lastMinutes')).toBe(false);
+  });
+});
+
+describe('task list (Görevler tab)', () => {
+  test('active work hottest first with risk counts; weekly tasks listed once as recurring', () => {
+    const data = appData({
+      courses: [course()],
+      tasks: [
+        weeklyTask(),
+        deadlineTask({ dueAt: '2026-10-02' }),
+        deadlineTask({ id: 21, title: 'Uzak iş', dueAt: '2026-12-20' }),
+      ],
+      instances: [
+        instance({ progress: 40, windowStart: '2026-09-23', windowEnd: '2026-09-29', status: 'done' }),
+        instance({ id: 101, progress: 0 }),
+        instance({ id: 200, taskId: 20, windowStart: '2026-09-28', windowEnd: '2026-10-02', progress: 20 }),
+        instance({ id: 201, taskId: 21, windowStart: '2026-09-28', windowEnd: '2026-12-20' }),
+      ],
+    });
+    const m = taskListModel(data, '2026-10-02');
+    expect(m.active.map((i) => i.instance.id)).toEqual([200, 101, 201]);
+    expect(m.risk).toEqual({ watch: 0, risky: 0, critical: 1 });
+    expect(m.recurring.map((i) => i.instance.id)).toEqual([101]);
+    expect(m.done.map((i) => i.instance.id)).toEqual([100]);
   });
 });

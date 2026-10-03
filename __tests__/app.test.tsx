@@ -74,6 +74,7 @@ describe('app smoke test', () => {
     };
 
     await visit('/calendar', 'Görev pencereleri');
+    await visit('/tasks', 'Tekrarlayan');
     await visit('/profile', 'Dönem özeti');
     await visit('/add', 'Ne ekliyoruz?');
     fireEvent.press(screen.getByText('Teslim tarihli iş'));
@@ -111,8 +112,8 @@ describe('app smoke test', () => {
     await screen.findByText('Görev pencereleri');
     fireEvent.press(screen.getByText('Ay'));
     expect(await screen.findByText('✓ yapılan')).toBeTruthy();
-    fireEvent.press(screen.getByText('Teslimler'));
-    expect(await screen.findAllByText('günlük pay')).not.toHaveLength(0);
+    // Sunday is in the grid (it used to wrap to the next row).
+    expect(screen.getAllByLabelText(/^Pazar \d/).length).toBeGreaterThanOrEqual(4);
   });
 
   test('adding a deadline and a weekly task writes to the database', async () => {

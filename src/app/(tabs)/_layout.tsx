@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
-import { CalendarTabIcon, ProfileTabIcon, TodayTabIcon } from '../../components/icons';
+import { CalendarTabIcon, ProfileTabIcon, TasksTabIcon, TodayTabIcon } from '../../components/icons';
 import { t } from '../../i18n/tr';
 import { useAppData } from '../../services/data';
 import { useTheme } from '../../theme/theme';
@@ -18,6 +18,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
   const items = [
     { name: 'index', label: t.tabs.today, Icon: TodayTabIcon },
     { name: 'calendar', label: t.tabs.calendar, Icon: CalendarTabIcon },
+    { name: 'tasks', label: t.tabs.tasks, Icon: TasksTabIcon },
     { name: 'profile', label: t.tabs.profile, Icon: ProfileTabIcon },
   ];
   return (
@@ -68,6 +69,7 @@ export default function TabsLayout() {
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.bg } }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="calendar" />
+      <Tabs.Screen name="tasks" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );

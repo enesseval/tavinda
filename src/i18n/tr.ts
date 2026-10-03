@@ -11,7 +11,7 @@ export const WEEKDAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
 export const WEEKDAYS_LONG = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'] as const;
 
 export const t = {
-  tabs: { today: 'Bugün', calendar: 'Takvim', profile: 'Profil' },
+  tabs: { today: 'Bugün', calendar: 'Takvim', tasks: 'Görevler', profile: 'Profil' },
   common: {
     cancel: 'Vazgeç',
     back: 'Geri',
@@ -210,11 +210,24 @@ export const t = {
     notFound: 'Bu görev artık yok.',
   },
 
+  tasks: {
+    title: 'Görevler',
+    tabs: { active: 'Aktif', recurring: 'Tekrarlayan', done: 'Tamamlanan' },
+    risk: { watch: 'Dikkat', risky: 'Riskli', critical: 'Kritik' },
+    recurringSub: (day: string | null, time: string) =>
+      day ? `Her hafta · ${day} dersinden sonra · ${time}` : `Her hafta · ${time}`,
+    empty: {
+      active: 'Açık görev yok. Yeni bir iş için + düğmesine dokun.',
+      recurring: 'Haftalık görev yok. Bir derse bağlı iş ekleyebilirsin.',
+      done: 'Henüz biten görev yok.',
+    },
+  },
+
   calendar: {
     title: 'Takvim',
     caption: (year: string, week: string) => `${year} · ${week}. hafta`,
     today: 'Bugün',
-    segments: { week: 'Hafta', month: 'Ay', due: 'Teslimler' },
+    segments: { week: 'Hafta', month: 'Ay' },
     weekLoad: (time: string) => `Bu hafta ${time} iş`,
     weekEmpty: 'Bu hafta planlı iş yok',
     windows: 'Görev pencereleri',

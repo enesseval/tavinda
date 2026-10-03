@@ -1,10 +1,8 @@
-import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
-import { useMemo, type ReactElement } from 'react';
+import { useMemo } from 'react';
 import { View } from 'react-native';
 
-import { addDays, diffDays, isoWeekday, startOfIsoWeek, timeToMinutes } from '../domain/dates';
-import { heatFor, minutesDoneOn, shareForInstance } from '../domain/heat';
+import { addDays, isoWeekday, startOfIsoWeek, timeToMinutes } from '../domain/dates';
 import { dayPlan, windowRows, type WindowSegment } from '../domain/projection';
 import type { AppData, HeatLevel, LocalDate } from '../domain/types';
 import {
@@ -18,9 +16,8 @@ import {
 } from '../i18n/format';
 import { HEAT_NAMES, t, WEEKDAYS_SHORT } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
-import { radii, withAlpha } from '../theme/tokens';
+import { withAlpha } from '../theme/tokens';
 import { AppText } from './AppText';
-import { CoursePill } from './controls';
 import { GradientBar } from './GradientBar';
 import { ChevronLeft, ChevronRight, FlagIcon } from './icons';
 import { Touchable } from './Touchable';
@@ -494,179 +491,6 @@ export function MonthView({
           </AppText>
         </View>
       </View>
-    </View>
-  );
-}
-
-interface DueRow {
-  instanceId: number;
-  taskId: number;
-  title: string;
-  course: { code: string; color: string } | null;
-  daysLeft: number;
-  due: LocalDate;
-  progress: number;
-  share: number;
-  heat: HeatLevel;
-  warnDays: number;
-}
-
-export function useDueRows(data: AppData, today: LocalDate): DueRow[] {
-  return useMemo(() => {
-    const rows: DueRow[] = [];
-    for (const task of data.tasks) {
-      if (task.kind !== 'deadline') continue;
-      const inst = data.instances.find((i) => i.taskId === task.id && i.status === 'active');
-      if (!inst) continue;
-      const course = task.courseId != null ? data.courses.find((k) => k.id === task.courseId) : undefined;
-      rows.push({
-        instanceId: inst.id,
-        taskId: task.id,
-        title: task.title,
-        course: course ? { code: course.shortName, color: course.color } : null,
-        daysLeft: diffDays(inst.windowEnd, today),
-        due: inst.windowEnd,
-        progress: inst.progress,
-        share: shareForInstance(inst, task, today, minutesDoneOn(data.progressLogs, inst.id, today, task.estimatedMinutes)),
-        heat: heatFor(inst, task, today, data.settings),
-        warnDays: task.warnDays ?? data.settings.warnDays,
-      });
-    }
-    return rows.sort((a, b) => a.due.localeCompare(b.due));
-  }, [data, today]);
-}
-
-function DueCard({ row }: { row: DueRow }) {
-  const { c } = useTheme();
-  const tick = row.daysLeft > row.warnDays ? ((row.daysLeft - row.warnDays) / row.daysLeft) * 100 : 0;
-  const stops =
-    tick === 0
-      ? [
-          { offset: 0, color: c.heat[2] },
-          { offset: 1, color: c.heat[3] },
-        ]
-      : [
-          { offset: 0, color: c.heat[0] },
-          { offset: (tick * 0.5) / 100, color: c.heat[0] },
-          { offset: (tick * 0.82) / 100, color: c.heat[1] },
-          { offset: tick / 100, color: c.heat[2] },
-          { offset: 1, color: c.heat[3] },
-        ];
-  return (
-    <Touchable
-      accessibilityRole="button"
-      accessibilityLabel={`${row.title}, ${t.card.daysLeft(row.daysLeft)}, %${row.progress}, ${HEAT_NAMES[row.heat]}`}
-      onPress={() => router.push({ pathname: '/task/[id]', params: { id: String(row.taskId) } })}
-      style={({ pressed }) => ({
-        borderWidth: 1,
-        borderColor: c.line,
-        backgroundColor: pressed ? c.surface2 : c.surface,
-        borderRadius: radii.card,
-        padding: 16,
-        gap: 12,
-        marginHorizontal: 20,
-        marginBottom: 12,
-      })}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <View style={{ gap: 6, flexShrink: 1 }}>
-          <AppText variant="headline">{row.title}</AppText>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {row.course ? <CoursePill code={row.course.code} color={row.course.color} /> : null}
-            <AppText variant="caption" tone="ink2" tabular>
-              {row.daysLeft <= 0 ? HEAT_NAMES[4] : t.card.daysLeft(row.daysLeft)}
-            </AppText>
-          </View>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 2 }}>
-          <AppText variant="bodyStrong" tabular>
-            {row.share ? fmtMinutes(row.share) : '–'}
-          </AppText>
-          <AppText variant="micro" tone="ink3">
-            {t.calendar.dailyShare}
-          </AppText>
-        </View>
-      </View>
-      <View style={{ height: 8 }}>
-        <View style={{ position: 'absolute', inset: 0, borderRadius: 4, overflow: 'hidden' }}>
-          <GradientBar height={8} stops={stops} opacity={0.22} />
-        </View>
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: 0,
-            width: `${row.progress}%`,
-            borderRadius: 4,
-            overflow: 'hidden',
-          }}
-        >
-          <View style={{ width: `${row.progress ? 10000 / row.progress : 0}%` }}>
-            <GradientBar height={8} stops={stops} />
-          </View>
-        </View>
-        {tick > 0 ? (
-          <View style={{ position: 'absolute', top: -4, bottom: -4, left: `${tick}%`, width: 1.5, backgroundColor: c.ink }} />
-        ) : null}
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <AppText variant="micro" tone="ink3" tabular>
-          {t.calendar.todayDone(row.progress)}
-        </AppText>
-        <AppText variant="micro" tone="ink2" tabular>
-          {fmtDayShortDate(row.due)}
-        </AppText>
-      </View>
-    </Touchable>
-  );
-}
-
-export function DueList({ rows, header, footerHeight }: { rows: DueRow[]; header: ReactElement; footerHeight: number }) {
-  return (
-    <FlashList
-      data={rows}
-      keyExtractor={(r) => String(r.instanceId)}
-      renderItem={({ item }) => <DueCard row={item} />}
-      ListHeaderComponent={header}
-      ListFooterComponent={<View style={{ height: footerHeight }} />}
-      showsVerticalScrollIndicator={false}
-    />
-  );
-}
-
-export function DueHeader({ rows, warnDays }: { rows: DueRow[]; warnDays: number }) {
-  const { c } = useTheme();
-  return (
-    <View>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          paddingTop: 18,
-          paddingBottom: 12,
-          paddingHorizontal: 20,
-        }}
-      >
-        <AppText variant="body" tone="ink2" style={{ flexShrink: 1 }}>
-          {t.calendar.dueSummary(rows.length, rows[0]?.daysLeft ?? 0)}
-        </AppText>
-        {rows.length ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 1.5, height: 14, backgroundColor: c.ink }} />
-            <AppText variant="caption" tone="ink2">
-              {t.calendar.dueWarn(warnDays)}
-            </AppText>
-          </View>
-        ) : null}
-      </View>
-      {!rows.length ? (
-        <AppText variant="body" tone="ink3" style={{ paddingHorizontal: 20 }}>
-          {t.calendar.dueEmpty}
-        </AppText>
-      ) : null}
     </View>
   );
 }

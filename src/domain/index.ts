@@ -11,3 +11,4 @@ export * from './projection';
 export * from './stats';
 export * from './widget';
 export * from './notifications';
+export * from './taskList';

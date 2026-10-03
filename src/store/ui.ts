@@ -14,8 +14,8 @@ interface UiState {
   toast: ToastState | null;
   showToast: (text: string, undo?: WriteReceipt | null) => void;
   hideToast: () => void;
-  calendarView: 'week' | 'month' | 'due';
-  setCalendarView: (v: 'week' | 'month' | 'due') => void;
+  calendarView: 'week' | 'month';
+  setCalendarView: (v: 'week' | 'month') => void;
   upcomingExpanded: boolean;
   toggleUpcoming: () => void;
   /** Instance ids animating out of the Today list. */

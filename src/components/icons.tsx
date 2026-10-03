@@ -128,6 +128,23 @@ export function TodayTabIcon({ color, bg, active }: IconProps & { bg: string; ac
   );
 }
 
+export function TasksTabIcon({ color, bg, active }: IconProps & { bg: string; active: boolean }) {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      {active ? <Rect x={3.5} y={3.5} width={17} height={17} rx={4} fill={color} /> : null}
+      <Path
+        d="M7.5 8.5l1.4 1.4 2.6-2.6M7.5 15l1.4 1.4 2.6-2.6M13.8 9h3.2M13.8 15.5h3.2"
+        stroke={active ? bg : color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {active ? null : <Rect x={3.5} y={3.5} width={17} height={17} rx={4} fill="none" stroke={color} strokeWidth={1.6} />}
+    </Svg>
+  );
+}
+
 export function CalendarTabIcon({ color, bg, active }: IconProps & { bg: string; active: boolean }) {
   return (
     <Svg width={26} height={26} viewBox="0 0 24 24">

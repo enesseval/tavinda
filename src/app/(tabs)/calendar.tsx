@@ -4,7 +4,7 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
-import { DueHeader, DueList, MonthView, useDueRows, WeekView } from '../../components/calendar';
+import { MonthView, WeekView } from '../../components/calendar';
 import { Segmented } from '../../components/controls';
 import { Fab } from '../../components/Fab';
 import { SwipePager } from '../../components/SwipePager';
@@ -24,7 +24,6 @@ export default function CalendarScreen() {
   const setView = useUi((s) => s.setCalendarView);
   const [weekOffset, setWeekOffset] = useState(0);
   const [monthOffset, setMonthOffset] = useState(0);
-  const dueRows = useDueRows(data, today);
 
   const weekStart = addDays(startOfIsoWeek(today), weekOffset * 7);
   const monthStart = toLocalDate(addMonths(parseLocalDate(`${today.slice(0, 7)}-01`), monthOffset));
@@ -55,7 +54,6 @@ export default function CalendarScreen() {
           onPress={() => {
             setWeekOffset(0);
             setMonthOffset(0);
-            if (view === 'due') setView('week');
           }}
           style={{ marginBottom: 8 }}
         >
@@ -67,7 +65,6 @@ export default function CalendarScreen() {
           options={[
             { value: 'week', label: t.calendar.segments.week },
             { value: 'month', label: t.calendar.segments.month },
-            { value: 'due', label: t.calendar.segments.due },
           ]}
           value={view}
           onChange={setView}
@@ -79,31 +76,18 @@ export default function CalendarScreen() {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ height: insets.top }} />
-      {view === 'due' ? (
-        <DueList
-          rows={dueRows}
-          footerHeight={bottom}
-          header={
-            <View>
-              {header}
-              <DueHeader rows={dueRows} warnDays={data.settings.warnDays} />
-            </View>
-          }
-        />
-      ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottom }}>
-          {header}
-          {view === 'week' ? (
-            <SwipePager onPrev={() => setWeekOffset((w) => w - 1)} onNext={() => setWeekOffset((w) => w + 1)}>
-              <WeekView data={data} today={today} weekStart={weekStart} onShift={(n) => setWeekOffset((w) => w + n)} />
-            </SwipePager>
-          ) : (
-            <SwipePager onPrev={() => setMonthOffset((m) => m - 1)} onNext={() => setMonthOffset((m) => m + 1)}>
-              <MonthView data={data} today={today} monthStart={monthStart} onShift={(n) => setMonthOffset((m) => m + n)} />
-            </SwipePager>
-          )}
-        </ScrollView>
-      )}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottom }}>
+        {header}
+        {view === 'week' ? (
+          <SwipePager onPrev={() => setWeekOffset((w) => w - 1)} onNext={() => setWeekOffset((w) => w + 1)}>
+            <WeekView data={data} today={today} weekStart={weekStart} onShift={(n) => setWeekOffset((w) => w + n)} />
+          </SwipePager>
+        ) : (
+          <SwipePager onPrev={() => setMonthOffset((m) => m - 1)} onNext={() => setMonthOffset((m) => m + 1)}>
+            <MonthView data={data} today={today} monthStart={monthStart} onShift={(n) => setMonthOffset((m) => m + n)} />
+          </SwipePager>
+        )}
+      </ScrollView>
       <Fab bottom={insets.bottom + 49 + 16} />
     </View>
   );
