@@ -3,36 +3,31 @@ import { View } from 'react-native';
 
 import { t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
-import { sizes } from '../theme/tokens';
 import { Touchable } from './Touchable';
 
-export function Fab({ bottom }: { bottom: number }) {
+/** The "+" in the middle of the tab bar: always in the same place, never over content. */
+export function TabAddButton() {
   const { c } = useTheme();
   return (
-    <Touchable
-      accessibilityRole="button"
-      accessibilityLabel={t.common.addTask}
-      onPress={() => router.push('/add')}
-      style={({ pressed }) => ({
-        position: 'absolute',
-        right: 20,
-        bottom,
-        width: sizes.fab,
-        height: sizes.fab,
-        borderRadius: sizes.fab / 2,
-        backgroundColor: c.ink,
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: [{ scale: pressed ? 0.94 : 1 }],
-        shadowColor: '#000',
-        shadowOpacity: 0.16,
-        shadowRadius: 9,
-        shadowOffset: { width: 0, height: 6 },
-        zIndex: 25,
-      })}
-    >
-      <View style={{ position: 'absolute', width: 20, height: 2.5, borderRadius: 2, backgroundColor: c.bg }} />
-      <View style={{ position: 'absolute', width: 2.5, height: 20, borderRadius: 2, backgroundColor: c.bg }} />
-    </Touchable>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-start' }}>
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel={t.common.addTask}
+        onPress={() => router.push('/add')}
+        hitSlop={6}
+        style={({ pressed }) => ({
+          width: 48,
+          height: 36,
+          borderRadius: 12,
+          backgroundColor: c.ink,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ scale: pressed ? 0.94 : 1 }],
+        })}
+      >
+        <View style={{ position: 'absolute', width: 16, height: 2.25, borderRadius: 2, backgroundColor: c.bg }} />
+        <View style={{ position: 'absolute', width: 2.25, height: 16, borderRadius: 2, backgroundColor: c.bg }} />
+      </Touchable>
+    </View>
   );
 }

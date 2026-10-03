@@ -9,6 +9,7 @@ import { t } from '../../i18n/tr';
 import { useAppData } from '../../services/data';
 import { useTheme } from '../../theme/theme';
 import { Touchable } from '../../components/Touchable';
+import { TabAddButton } from '../../components/Fab';
 
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
@@ -33,11 +34,12 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
         borderTopColor: c.line,
       }}
     >
-      {items.map(({ name, label, Icon }) => {
+      {items.map(({ name, label, Icon }, i) => {
         const index = state.routes.findIndex((r) => r.name === name);
         const focused = state.index === index;
         const color = focused ? c.ink : c.ink3;
-        return (
+        return [
+          i === 2 ? <TabAddButton key="add" /> : null,
           <Touchable
             key={name}
             accessibilityRole="tab"
@@ -54,8 +56,8 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
             <AppText variant="tab" color={color} maxFontSizeMultiplier={1.2}>
               {label}
             </AppText>
-          </Touchable>
-        );
+          </Touchable>,
+        ];
       })}
     </View>
   );

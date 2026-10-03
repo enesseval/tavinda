@@ -5,7 +5,6 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
-import { Fab } from '../../components/Fab';
 import { TaskCard } from '../../components/TaskCard';
 import { CalmCard, DayTimeline, HeroCard, LongTermCard, NoCalendarBanner, NowCard, SetupCard } from '../../components/today';
 import { minutesToTime, toLocalDate } from '../../domain/dates';
@@ -323,7 +322,6 @@ export default function TodayScreen() {
         getItemType={(r) => r.type}
         showsVerticalScrollIndicator={false}
       />
-      <Fab bottom={insets.bottom + 49 + 16} />
     </View>
   );
 }

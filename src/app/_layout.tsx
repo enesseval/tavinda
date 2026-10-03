@@ -86,8 +86,8 @@ function DayWatcher() {
 function Toasts() {
   const insets = useSafeAreaInsets();
   const path = usePathname();
-  const onTabs = path === '/' || path === '/calendar' || path === '/profile';
-  return <ToastHost bottom={onTabs ? insets.bottom + 49 + 88 : insets.bottom + 96} />;
+  const onTabs = path === '/' || path === '/calendar' || path === '/tasks' || path === '/profile';
+  return <ToastHost bottom={onTabs ? insets.bottom + 49 + 16 : insets.bottom + 96} />;
 }
 
 function AppStack() {
@@ -114,6 +114,8 @@ function AppStack() {
         <Stack.Screen name="courses/index" />
         <Stack.Screen name="courses/manual" />
         <Stack.Screen name="courses/import" />
+        <Stack.Screen name="settings/index" />
+        <Stack.Screen name="settings/debug" />
         <Stack.Screen name="settings/calendars" />
         <Stack.Screen name="settings/hours" />
         <Stack.Screen name="block/new" options={sheet} />

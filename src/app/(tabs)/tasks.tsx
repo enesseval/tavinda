@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
 import { Segmented } from '../../components/controls';
-import { Fab } from '../../components/Fab';
 import { TaskCard } from '../../components/TaskCard';
 import { taskListModel, type ListItem, type RiskLevel } from '../../domain/taskList';
 import { fmtMinutes } from '../../i18n/format';
@@ -116,7 +115,6 @@ export default function TasksScreen() {
         ListFooterComponent={<View style={{ height: insets.bottom + 49 + 110 }} />}
         showsVerticalScrollIndicator={false}
       />
-      <Fab bottom={insets.bottom + 49 + 16} />
     </View>
   );
 }

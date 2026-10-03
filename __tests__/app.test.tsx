@@ -78,6 +78,8 @@ describe('app smoke test', () => {
     await visit('/block/new', 'Ne yapacaksın?');
     await visit('/settings/hours', 'Her gün aynı');
     await visit('/profile', 'Dönem özeti');
+    await visit('/settings', 'Günün bittiği saat');
+    await visit('/settings/debug', 'Demo dönem yükle');
     await visit('/add', 'Ne ekliyoruz?');
     fireEvent.press(screen.getByText('Teslim tarihli iş'));
     expect(await screen.findByText(/Önizleme · şu an/)).toBeTruthy();
