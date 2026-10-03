@@ -75,6 +75,8 @@ describe('app smoke test', () => {
 
     await visit('/calendar', 'Görev pencereleri');
     await visit('/tasks', 'Tekrarlayan');
+    await visit('/block/new', 'Ne yapacaksın?');
+    await visit('/settings/hours', 'Her gün aynı');
     await visit('/profile', 'Dönem özeti');
     await visit('/add', 'Ne ekliyoruz?');
     fireEvent.press(screen.getByText('Teslim tarihli iş'));
@@ -154,5 +156,33 @@ describe('app smoke test', () => {
     const rows = loadAll(getDb()).courses.filter((k) => k.name === 'Elmak Lab');
     expect(rows.map((k) => k.weekday).sort()).toEqual([1, 3, 5]);
     expect(new Set(rows.map((k) => k.shortName)).size).toBe(1);
+  });
+
+  test('planning free time starts a block; finishing a task block saves progress', async () => {
+    seeded();
+    renderRouter('./src/app', { initialUrl: '/' });
+    await screen.findByText('Şimdi sırada');
+    act(() => router.push('/block/new'));
+    fireEvent.press(await screen.findByText('Yemek yiyeceğim'));
+    fireEvent.press(screen.getByText('Başla'));
+    const newest = () => [...loadAll(getDb()).blocks].sort((a, b) => b.id - a.id)[0];
+    const meal = newest();
+    expect(meal.kind).toBe('meal');
+    expect(meal.status).toBe('running');
+
+    const active = loadAll(getDb()).instances.find((i) => i.status === 'active' && i.progress < 50)!;
+    act(() => router.push('/block/new'));
+    fireEvent.press(await screen.findByText('Görevlerimden birini yapacağım'));
+    const title = loadAll(getDb()).tasks.find((t) => t.id === active.taskId)!.title;
+    fireEvent.press(screen.getAllByText(title)[0]);
+    fireEvent.press(screen.getByText('Başla'));
+    const taskBlock = newest();
+    expect(taskBlock.kind).toBe('task');
+    expect(taskBlock.instanceId).not.toBeNull();
+    expect(loadAll(getDb()).blocks.find((b) => b.id === meal.id)!.status).toBe('done');
+
+    act(() => router.push({ pathname: '/block/[id]', params: { id: String(taskBlock.id) } }));
+    fireEvent.press(await screen.findByText('Kaydet'));
+    expect(loadAll(getDb()).blocks.find((b) => b.id === taskBlock.id)!.status).toBe('done');
   });
 });

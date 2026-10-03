@@ -1,43 +1,20 @@
 import { useEffect, useRef } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { timeToMinutes } from '../domain/dates';
-import type { LoadSegment, TodayItem } from '../domain/today';
-import type { Course } from '../domain/types';
+import { minutesToTime } from '../domain/dates';
+import type { DayTimeline as DayTimelineModel } from '../domain/schedule';
+import type { TodayItem } from '../domain/today';
 import { fmtMinutes } from '../i18n/format';
 import { timeLeftLine } from '../ui/taskText';
 import { HEAT_NAMES, t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
-import { heatBorder, radii } from '../theme/tokens';
+import { heatBorder, radii, withAlpha } from '../theme/tokens';
+import { blockName, clockOf } from '../ui/blockText';
 import { AppText } from './AppText';
 import { Button, CoursePill } from './controls';
 import { CalendarSetupIcon, HeatGlyph, LockIcon, NoCalendarIcon } from './icons';
 import { HeatPulse } from './TaskCard';
 import { Touchable } from './Touchable';
-
-export function LoadBar({ segments }: { segments: LoadSegment[] }) {
-  const { c } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', gap: 3, height: 6 }}>
-      {segments.length ? (
-        segments.map((s) => (
-          <View
-            key={`${s.instanceId}-${s.live}`}
-            style={{
-              flexGrow: s.minutes,
-              flexBasis: 0,
-              borderRadius: 3,
-              backgroundColor: s.live ? c.heat[s.heat] : c.ink3,
-              opacity: s.live ? 1 : 0.35,
-            }}
-          />
-        ))
-      ) : (
-        <View style={{ flex: 1, borderRadius: 3, backgroundColor: c.surface2 }} />
-      )}
-    </View>
-  );
-}
 
 export function NoCalendarBanner({ onPress }: { onPress: () => void }) {
   const { c } = useTheme();
@@ -66,32 +43,40 @@ export function NoCalendarBanner({ onPress }: { onPress: () => void }) {
   );
 }
 
-const PX_PER_MIN = 1;
+const PX_PER_MIN = 1.1;
 
-export function ClassesStrip({ classes, nowMinutes, isToday }: { classes: Course[]; nowMinutes: number; isToday: boolean }) {
+/**
+ * The whole day on one strip: classes, what the user did or is doing (blocks),
+ * free gaps, and a needle at the current time. Tapping the current gap plans it.
+ */
+export function DayTimeline({
+  timeline,
+  nowMinutes,
+  isToday,
+  onPlanGap,
+  onOpenBlock,
+}: {
+  timeline: DayTimelineModel;
+  nowMinutes: number;
+  isToday: boolean;
+  onPlanGap: () => void;
+  onOpenBlock: (id: number) => void;
+}) {
   const { c } = useTheme();
   const ref = useRef<ScrollView>(null);
-  const starts = classes.map((k) => timeToMinutes(k.startTime));
-  const ends = classes.map((k) => timeToMinutes(k.endTime));
-  const startH = Math.min(8, ...starts.map((m) => Math.floor(m / 60)));
-  const endH = Math.max(18, ...ends.map((m) => Math.ceil(m / 60)));
+  const startH = Math.floor(timeline.start / 60);
+  const endH = Math.ceil(timeline.end / 60);
   const origin = startH * 60;
   const width = (endH - startH) * 60 * PX_PER_MIN;
   const X = (m: number) => (m - origin) * PX_PER_MIN;
-
-  const gaps: { x: number; w: number; label: boolean }[] = [];
-  let cur = origin;
-  const sorted = classes.map((k) => ({ s: timeToMinutes(k.startTime), e: timeToMinutes(k.endTime) })).sort((a, b) => a.s - b.s);
-  for (const k of [...sorted, { s: endH * 60, e: endH * 60 }]) {
-    if (k.s - cur >= 30) gaps.push({ x: X(cur) + 3, w: k.s - cur - 6, label: k.s - cur >= 70 });
-    cur = Math.max(cur, k.e);
-  }
+  const firstBusy = timeline.segments.find((s) => s.kind !== 'gap')?.start ?? origin;
 
   useEffect(() => {
-    const target = Math.max(0, X(isToday ? nowMinutes : (sorted[0]?.s ?? origin)) - 120);
+    const target = Math.max(0, X(isToday ? nowMinutes : firstBusy) - 120);
     const tm = setTimeout(() => ref.current?.scrollTo({ x: target, animated: false }), 0);
     return () => clearTimeout(tm);
-  }, [classes.length, isToday]);
+    // Scroll once per day/list change; following every minute would fight the user.
+  }, [timeline.day, timeline.segments.length, isToday]);
 
   const showNow = isToday && nowMinutes >= origin && nowMinutes <= endH * 60;
   return (
@@ -100,9 +85,9 @@ export function ClassesStrip({ classes, nowMinutes, isToday }: { classes: Course
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingHorizontal: 20 }}
-      style={{ marginTop: 20 }}
+      style={{ marginTop: 16 }}
     >
-      <View style={{ width, height: 64 }}>
+      <View style={{ width, height: 72 }}>
         {Array.from({ length: endH - startH + 1 }, (_, i) => (
           <AppText
             key={i}
@@ -112,53 +97,104 @@ export function ClassesStrip({ classes, nowMinutes, isToday }: { classes: Course
             maxFontSizeMultiplier={1.1}
             style={{ position: 'absolute', top: 0, left: i * 60 * PX_PER_MIN - 2 }}
           >
-            {String(startH + i).padStart(2, '0')}
+            {String((startH + i) % 24).padStart(2, '0')}
           </AppText>
         ))}
-        {gaps.map((g) => (
-          <View
-            key={g.x}
-            style={{
-              position: 'absolute',
-              top: 20,
-              height: 44,
-              left: g.x,
-              width: g.w,
-              borderWidth: 1,
-              borderStyle: 'dashed',
-              borderColor: c.line,
-              borderRadius: 10,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {g.label ? (
-              <AppText variant="micro" tone="ink3" maxFontSizeMultiplier={1.1}>
-                {t.today.study}
-              </AppText>
-            ) : null}
-          </View>
-        ))}
-        {classes.map((k) => {
-          const s = timeToMinutes(k.startTime);
-          const e = timeToMinutes(k.endTime);
+        {timeline.segments.map((seg) => {
+          const left = X(seg.start) + 1.5;
+          const w = Math.max(18, (seg.end - seg.start) * PX_PER_MIN - 3);
+          if (seg.kind === 'gap') {
+            const current = isToday && nowMinutes >= seg.start && nowMinutes < seg.end;
+            const past = isToday && seg.end <= nowMinutes;
+            const body = (
+              <View
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderStyle: 'dashed',
+                  borderColor: current ? c.ink2 : c.line,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 6,
+                  opacity: past ? 0.5 : 1,
+                }}
+              >
+                {w >= 60 ? (
+                  <AppText variant="micro" tone={current ? 'ink2' : 'ink3'} numberOfLines={1} maxFontSizeMultiplier={1.1}>
+                    {current ? `${t.blocks.free} · ${t.blocks.tapToPlan}` : t.blocks.free}
+                  </AppText>
+                ) : null}
+              </View>
+            );
+            return current ? (
+              <Touchable
+                key={`g-${seg.start}`}
+                accessibilityRole="button"
+                accessibilityLabel={`${t.blocks.free} ${minutesToTime(seg.start)}–${minutesToTime(seg.end)}, ${t.blocks.tapToPlan}`}
+                onPress={onPlanGap}
+                style={{ position: 'absolute', top: 22, height: 46, left, width: w }}
+              >
+                {body}
+              </Touchable>
+            ) : (
+              <View key={`g-${seg.start}`} style={{ position: 'absolute', top: 22, height: 46, left, width: w }}>
+                {body}
+              </View>
+            );
+          }
+          if (seg.kind === 'class') {
+            const k = seg.course;
+            return (
+              <View
+                key={`c-${k.id}`}
+                accessibilityLabel={`${k.name}, ${k.startTime}–${k.endTime}`}
+                style={{
+                  position: 'absolute',
+                  top: 22,
+                  height: 46,
+                  left,
+                  width: w,
+                  backgroundColor: c.surface2,
+                  borderLeftWidth: 3,
+                  borderLeftColor: k.color,
+                  borderTopLeftRadius: 6,
+                  borderBottomLeftRadius: 6,
+                  borderTopRightRadius: 10,
+                  borderBottomRightRadius: 10,
+                  paddingVertical: 5,
+                  paddingHorizontal: 8,
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                <AppText variant="caption" weight="600" numberOfLines={1} maxFontSizeMultiplier={1.1}>
+                  {k.name}
+                </AppText>
+                <AppText variant="micro" tone="ink2" tabular numberOfLines={1} maxFontSizeMultiplier={1.1}>
+                  {k.startTime}–{k.endTime}
+                </AppText>
+              </View>
+            );
+          }
+          const b = seg.block;
+          const running = b.status === 'running';
           return (
-            <View
-              key={k.id}
-              accessibilityLabel={`${k.name}, ${k.startTime}–${k.endTime}`}
+            <Touchable
+              key={`b-${b.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${blockName(b)}, ${clockOf(b.startAt)}–${clockOf(b.endAt)}`}
+              onPress={() => onOpenBlock(b.id)}
               style={{
                 position: 'absolute',
-                top: 20,
-                height: 44,
-                left: X(s),
-                width: Math.max(40, (e - s) * PX_PER_MIN),
-                backgroundColor: c.surface2,
-                borderLeftWidth: 3,
-                borderLeftColor: k.color,
-                borderTopLeftRadius: 6,
-                borderBottomLeftRadius: 6,
-                borderTopRightRadius: 10,
-                borderBottomRightRadius: 10,
+                top: 22,
+                height: 46,
+                left,
+                width: w,
+                backgroundColor: withAlpha(b.kind === 'task' ? c.heat[0] : c.ink2, 0.14),
+                borderWidth: running ? 1.5 : 0,
+                borderColor: c.ink2,
+                borderRadius: 10,
                 paddingVertical: 5,
                 paddingHorizontal: 8,
                 justifyContent: 'center',
@@ -166,16 +202,19 @@ export function ClassesStrip({ classes, nowMinutes, isToday }: { classes: Course
               }}
             >
               <AppText variant="caption" weight="600" numberOfLines={1} maxFontSizeMultiplier={1.1}>
-                {k.name}
+                {blockName(b)}
               </AppText>
               <AppText variant="micro" tone="ink2" tabular numberOfLines={1} maxFontSizeMultiplier={1.1}>
-                {k.startTime}–{k.endTime}
+                {clockOf(b.startAt)}–{clockOf(b.endAt)}
               </AppText>
-            </View>
+            </Touchable>
           );
         })}
         {showNow ? (
-          <View style={{ position: 'absolute', top: 15, bottom: 0, left: X(nowMinutes), width: 1.5, backgroundColor: c.ink }}>
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', top: 17, bottom: 0, left: X(nowMinutes), width: 1.5, backgroundColor: c.ink }}
+          >
             <View
               style={{
                 position: 'absolute',
@@ -191,6 +230,51 @@ export function ClassesStrip({ classes, nowMinutes, isToday }: { classes: Course
         ) : null}
       </View>
     </ScrollView>
+  );
+}
+
+/** What is happening right now: a block to close, a block in progress, or free time to plan. */
+export function NowCard({
+  title,
+  body,
+  action,
+  onPress,
+  emphasis,
+}: {
+  title: string;
+  body: string;
+  action: string;
+  onPress: () => void;
+  emphasis?: boolean;
+}) {
+  const { c } = useTheme();
+  return (
+    <View
+      style={{
+        marginHorizontal: 20,
+        marginTop: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        paddingLeft: 16,
+        paddingRight: 12,
+        borderRadius: radii.card,
+        backgroundColor: c.surface,
+        borderWidth: 1,
+        borderColor: emphasis ? c.ink2 : c.line,
+      }}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <AppText variant="bodyStrong" numberOfLines={1}>
+          {title}
+        </AppText>
+        <AppText variant="footnote" tone="ink2" numberOfLines={2}>
+          {body}
+        </AppText>
+      </View>
+      <Button label={action} small kind={emphasis ? 'primary' : 'secondary'} onPress={onPress} style={{ minWidth: 84 }} />
+    </View>
   );
 }
 

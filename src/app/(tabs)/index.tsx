@@ -7,8 +7,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../components/AppText';
 import { Fab } from '../../components/Fab';
 import { TaskCard } from '../../components/TaskCard';
-import { CalmCard, ClassesStrip, HeroCard, LoadBar, LongTermCard, NoCalendarBanner, SetupCard } from '../../components/today';
+import { CalmCard, DayTimeline, HeroCard, LongTermCard, NoCalendarBanner, NowCard, SetupCard } from '../../components/today';
+import { minutesToTime, toLocalDate } from '../../domain/dates';
+import { currentGap, dayTimeline, endedBlocks, runningBlock } from '../../domain/schedule';
 import { buildTodayModel, type TodayGroupKey, type TodayItem } from '../../domain/today';
+import { blockName, clockOf } from '../../ui/blockText';
 import { fmtLongDay, fmtMinutes } from '../../i18n/format';
 import { HEAT_NAMES, t } from '../../i18n/tr';
 import { getCalendarPermission, openAppSettings } from '../../services/calendar';
@@ -26,6 +29,7 @@ type Row =
   | { type: 'banner'; key: string }
   | { type: 'load'; key: string }
   | { type: 'strip'; key: string }
+  | { type: 'now'; key: string }
   | { type: 'setup'; key: string }
   | { type: 'heroLabel'; key: string }
   | { type: 'hero'; key: string; item: TodayItem }
@@ -61,12 +65,24 @@ export default function TodayScreen() {
     }, [usesCalendar]),
   );
 
+  const timeline = useMemo(() => dayTimeline(data, toLocalDate(now)), [data, now]);
+  // Only one thing at a time: close a finished task block, else show the running one, else offer the gap.
+  const nowState = useMemo(() => {
+    const ended = endedBlocks(data.blocks, now).find((b) => b.kind === 'task');
+    if (ended) return { kind: 'ended' as const, block: ended };
+    const running = runningBlock(data.blocks, now);
+    if (running) return { kind: 'running' as const, block: running };
+    const gap = data.settings.onboarded ? currentGap(data, now) : null;
+    return gap ? { kind: 'gap' as const, gap } : null;
+    // `now` ticks every 30 s; that is enough for the card.
+  }, [data, now]);
+
   const rows = useMemo<Row[]>(() => {
     const r: Row[] = [{ type: 'header', key: 'header' }];
     if (calDenied) r.push({ type: 'banner', key: 'banner' });
-    r.push({ type: 'load', key: 'load' });
-    if (model.hasCourses) r.push({ type: 'strip', key: 'strip' });
-    else r.push({ type: 'setup', key: 'setup' });
+    r.push({ type: 'load', key: 'load' }, { type: 'strip', key: 'strip' });
+    if (nowState) r.push({ type: 'now', key: `now-${nowState.kind}` });
+    if (!model.hasCourses) r.push({ type: 'setup', key: 'setup' });
     if (model.hero) {
       r.push({ type: 'heroLabel', key: 'heroLabel' }, { type: 'hero', key: `hero-${model.hero.instance.id}`, item: model.hero });
     } else if (model.hasCourses || data.tasks.length > 0) {
@@ -83,7 +99,7 @@ export default function TodayScreen() {
     }
     r.push({ type: 'footer', key: 'footer' });
     return r;
-  }, [model, calDenied, expanded, data.tasks.length]);
+  }, [model, calDenied, expanded, data.tasks.length, nowState]);
 
   const screenBg = model.maxHeat === 4 ? mix(c.heat[4], c.bg, 0.04) : model.maxHeat === 3 ? mix(c.heat[3], c.bg, 0.03) : c.bg;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -150,11 +166,51 @@ export default function TodayScreen() {
                   ? t.today.load(fmtMinutes(model.loadMinutes), model.liveCount)
                   : t.today.noLoad}
             </AppText>
-            <LoadBar segments={model.segments} />
           </View>
         );
       case 'strip':
-        return <ClassesStrip classes={model.classes} nowMinutes={nowMinutes} isToday />;
+        return (
+          <DayTimeline
+            timeline={timeline}
+            nowMinutes={nowMinutes}
+            isToday
+            onPlanGap={() => router.push('/block/new')}
+            onOpenBlock={(id) => router.push({ pathname: '/block/[id]', params: { id: String(id) } })}
+          />
+        );
+      case 'now': {
+        if (!nowState) return null;
+        if (nowState.kind === 'ended') {
+          return (
+            <NowCard
+              emphasis
+              title={t.blocks.endedCardTitle(blockName(nowState.block))}
+              body={t.blocks.endedCardBody}
+              action={t.blocks.endedCardAction}
+              onPress={() => router.push({ pathname: '/block/[id]', params: { id: String(nowState.block.id) } })}
+            />
+          );
+        }
+        if (nowState.kind === 'running') {
+          return (
+            <NowCard
+              title={t.blocks.nowRunning(blockName(nowState.block), clockOf(nowState.block.endAt))}
+              body={`${clockOf(nowState.block.startAt)}–${clockOf(nowState.block.endAt)}`}
+              action={t.blocks.finishEarly}
+              onPress={() => router.push({ pathname: '/block/[id]', params: { id: String(nowState.block.id) } })}
+            />
+          );
+        }
+        return (
+          <NowCard
+            emphasis
+            title={t.blocks.gapCardTitle}
+            body={t.blocks.gapCardBody(minutesToTime(nowState.gap.end))}
+            action={t.blocks.gapCardAction}
+            onPress={() => router.push('/block/new')}
+          />
+        );
+      }
       case 'setup':
         return <SetupCard onCalendar={() => router.push('/courses/import')} onManual={() => router.push('/courses/manual')} />;
       case 'heroLabel':

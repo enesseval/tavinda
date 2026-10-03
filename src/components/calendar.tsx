@@ -4,6 +4,8 @@ import { View } from 'react-native';
 
 import { addDays, isoWeekday, startOfIsoWeek, timeToMinutes } from '../domain/dates';
 import { dayPlan, windowRows, type WindowSegment } from '../domain/projection';
+import { blocksOn } from '../domain/schedule';
+import { blockName, clockOf } from '../ui/blockText';
 import type { AppData, HeatLevel, LocalDate } from '../domain/types';
 import {
   fmtCompactMinutes,
@@ -94,8 +96,18 @@ export function WeekView({
   const colW = 100 / count;
 
   const classes = data.courses.filter((k) => days.some((d) => isoWeekday(d) === k.weekday));
-  const startH = Math.min(8, ...classes.map((k) => Math.floor(timeToMinutes(k.startTime) / 60)));
-  const endH = Math.max(19, ...classes.map((k) => Math.ceil(timeToMinutes(k.endTime) / 60)));
+  const dayBlocks = useMemo(() => days.map((d) => blocksOn(data.blocks, d)), [data.blocks, days]);
+  const flatBlocks = dayBlocks.flat();
+  const startH = Math.min(
+    8,
+    ...classes.map((k) => Math.floor(timeToMinutes(k.startTime) / 60)),
+    ...flatBlocks.map((b) => Math.floor(b.start / 60)),
+  );
+  const endH = Math.max(
+    19,
+    ...classes.map((k) => Math.ceil(timeToMinutes(k.endTime) / 60)),
+    ...flatBlocks.map((b) => Math.ceil(b.end / 60)),
+  );
   const Y = (m: number) => ((m - startH * 60) / 60) * HOUR_PX;
   const todayCol = days.indexOf(today);
 
@@ -329,6 +341,39 @@ export function WeekView({
               );
             }),
         )}
+        {dayBlocks.map((list, col) =>
+          list.map(({ start, end, block }) => (
+            <Touchable
+              key={`${days[col]}-b-${block.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${blockName(block)}, ${clockOf(block.startAt)}–${clockOf(block.endAt)}`}
+              onPress={() => router.push({ pathname: '/block/[id]', params: { id: String(block.id) } })}
+              style={{
+                position: 'absolute',
+                left: `${col * colW}%`,
+                width: `${colW}%`,
+                top: Y(start),
+                height: Math.max(16, Y(end) - Y(start)),
+                paddingHorizontal: 2,
+              }}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: withAlpha(block.kind === 'task' ? c.heat[0] : c.ink2, 0.16),
+                  borderRadius: 6,
+                  paddingVertical: 3,
+                  paddingHorizontal: 4,
+                  overflow: 'hidden',
+                }}
+              >
+                <AppText variant="micro" numberOfLines={2} maxFontSizeMultiplier={1} style={{ fontSize: 10, lineHeight: 12 }}>
+                  {blockName(block)}
+                </AppText>
+              </View>
+            </Touchable>
+          )),
+        )}
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, marginLeft: GRID_LEFT }}>
@@ -344,6 +389,10 @@ export function WeekView({
         />
         <AppText variant="caption" tone="ink2">
           {t.calendar.legendClass}
+        </AppText>
+        <View style={{ width: 12, height: 12, borderRadius: 3, marginLeft: 10, backgroundColor: withAlpha(c.ink2, 0.16) }} />
+        <AppText variant="caption" tone="ink2">
+          {t.calendar.legendBlock}
         </AppText>
       </View>
     </View>

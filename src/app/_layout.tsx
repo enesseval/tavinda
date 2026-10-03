@@ -1,7 +1,7 @@
 import '../../global.css';
 
 import { useFonts } from 'expo-font';
-import { Stack, usePathname } from 'expo-router';
+import { router, Stack, usePathname, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -15,7 +15,7 @@ import { getDb } from '../db/client';
 import { fixCourseCodes, runReconcile } from '../services/actions';
 import { useNow } from '../services/clock';
 import { onRefresh, useAppData } from '../services/data';
-import { configureNotifications, rescheduleNotifications } from '../services/notifications';
+import { configureNotifications, listenForNotificationTaps, rescheduleNotifications } from '../services/notifications';
 import { ThemeProvider, useTheme } from '../theme/theme';
 
 /** Fonts are cosmetic; start with system fonts if they take longer than this. */
@@ -92,6 +92,8 @@ function Toasts() {
 
 function AppStack() {
   const { c, scheme } = useTheme();
+  // Tapping a "süre doldu" / "sırada ne var?" notification opens the matching sheet.
+  useEffect(() => listenForNotificationTaps((url) => router.push(url as Href)), []);
   const sheet = {
     presentation: 'transparentModal',
     animation: 'none',
@@ -113,6 +115,9 @@ function AppStack() {
         <Stack.Screen name="courses/manual" />
         <Stack.Screen name="courses/import" />
         <Stack.Screen name="settings/calendars" />
+        <Stack.Screen name="settings/hours" />
+        <Stack.Screen name="block/new" options={sheet} />
+        <Stack.Screen name="block/[id]" options={sheet} />
       </Stack>
       <DayWatcher />
       <Toasts />

@@ -9,6 +9,9 @@ import {
   loadAll,
   setCourseShortName,
   updateCourse,
+  insertBlock,
+  updateBlock,
+  deleteBlock as deleteBlockRow,
   saveDeferTx,
   saveProgressTx,
   setSetting as setSettingRow,
@@ -22,7 +25,8 @@ import {
 import { seedDemo } from '../db/seed';
 import { dedupeShortNames } from '../ui/courseDrafts';
 import { applyDefer, applyProgress, isReconcileNoop, reconcile, toLocalTimestamp, type SettingKey } from '../domain';
-import type { LocalDate, Settings, Task } from '../domain/types';
+import type { BlockKind, LocalDate, Settings, Task, TimeBlock } from '../domain/types';
+import { endedBlocks, parseTimestamp, runningBlock } from '../domain/schedule';
 import { getNow, getToday } from './clock';
 import { refresh } from './data';
 
@@ -37,6 +41,86 @@ export function runReconcile(today: LocalDate = getToday()): void {
   const data = loadAll(db);
   const result = reconcile({ today, courses: data.courses, tasks: data.tasks, instances: data.instances });
   if (!isReconcileNoop(result)) applyReconcileResult(db, result);
+  closePassiveBlocks(data.blocks);
+  refresh();
+}
+
+/** Meal, rest, sleep and "other" blocks close by themselves when their time is up. */
+function closePassiveBlocks(blocks: TimeBlock[]): void {
+  const db = getDb();
+  for (const b of endedBlocks(blocks, getNow())) {
+    if (b.kind !== 'task') updateBlock(db, { ...b, status: 'done' });
+  }
+}
+
+export interface BlockInput {
+  kind: BlockKind;
+  label: string | null;
+  instanceId: number | null;
+  end: Date;
+}
+
+/** "I'll be busy with this until …" — starts now. */
+export function startBlock(input: BlockInput): number {
+  const db = getDb();
+  const now = getNow();
+  const data = loadAll(db);
+  closePassiveBlocks(data.blocks);
+  // Starting something new ends whatever was running. A task block still asks for its result.
+  const running = runningBlock(data.blocks, now);
+  if (running) {
+    updateBlock(db, { ...running, endAt: toLocalTimestamp(now), status: running.kind === 'task' ? 'running' : 'done' });
+  }
+  const inst = input.instanceId != null ? data.instances.find((i) => i.id === input.instanceId) : undefined;
+  const task = inst ? data.tasks.find((x) => x.id === inst.taskId) : undefined;
+  const id = insertBlock(db, {
+    startAt: toLocalTimestamp(now),
+    endAt: toLocalTimestamp(input.end),
+    kind: input.kind,
+    label: input.label?.trim() || null,
+    instanceId: inst?.id ?? null,
+    taskTitle: task?.title ?? null,
+    fromPct: inst?.progress ?? null,
+    toPct: null,
+    status: 'running',
+    createdAt: toLocalTimestamp(now),
+  });
+  refresh();
+  return id;
+}
+
+/**
+ * Closes a block. For a task block `pct` is the task's new progress: it is
+ * saved like any progress entry and written on the block ("%40 tamamlandı").
+ * Ending early trims the block to now.
+ */
+export function finishBlock(id: number, pct?: number): void {
+  const db = getDb();
+  const data = loadAll(db);
+  const b = data.blocks.find((x) => x.id === id);
+  if (!b) return;
+  const now = getNow();
+  const endAt = parseTimestamp(b.endAt) > now ? toLocalTimestamp(now) : b.endAt;
+  let toPct = b.toPct;
+  if (b.kind === 'task' && b.instanceId != null && pct != null) {
+    saveProgress(b.instanceId, pct);
+    toPct = pct;
+  }
+  updateBlock(db, { ...b, endAt, toPct, status: 'done' });
+  refresh();
+}
+
+export function extendBlock(id: number, minutes: number): void {
+  const db = getDb();
+  const b = loadAll(db).blocks.find((x) => x.id === id);
+  if (!b) return;
+  const base = Math.max(parseTimestamp(b.endAt).getTime(), getNow().getTime());
+  updateBlock(db, { ...b, endAt: toLocalTimestamp(new Date(base + minutes * 60_000)), status: 'running' });
+  refresh();
+}
+
+export function deleteBlock(id: number): void {
+  deleteBlockRow(getDb(), id);
   refresh();
 }
 

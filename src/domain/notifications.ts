@@ -1,5 +1,6 @@
 import { addDays, dueInstant, logicalDate, logicalDateTime } from './dates';
 import { warnDaysFor } from './heat';
+import { classEndsWithGap, parseTimestamp } from './schedule';
 import { applyReconcile, reconcile } from './reconcile';
 import { buildTodayModel } from './today';
 import type { AppData, LocalDate } from './types';
@@ -21,6 +22,8 @@ export type PlannedNotification =
   | { kind: 'lastDayMorning'; id: string; fireAt: Date; day: LocalDate; titles: string[] }
   | { kind: 'startNow'; id: string; fireAt: Date; day: LocalDate; title: string; daysLeft: number }
   | { kind: 'lastMinutes'; id: string; fireAt: Date; day: LocalDate; title: string; minutes: number }
+  | { kind: 'classEnd'; id: string; fireAt: Date; day: LocalDate; course: string }
+  | { kind: 'blockEnd'; id: string; fireAt: Date; day: LocalDate; blockId: number; name: string; isTask: boolean }
   | {
       kind: 'lastDayEvening';
       id: string;
@@ -117,6 +120,20 @@ export function planNotifications(data: AppData, now: Date, horizonDays = 7): Pl
           minutes: task.alarmMinutes,
         });
       }
+    }
+  }
+
+  // Time blocks: ask for the result when one ends, and "what's next?" when a class ends into free time.
+  for (const b of data.blocks ?? []) {
+    if (b.status !== 'running') continue;
+    const at = parseTimestamp(b.endAt);
+    if (at <= now) continue;
+    const name = b.kind === 'task' ? (b.taskTitle ?? '') : b.kind === 'other' ? (b.label ?? '') : b.kind;
+    out.push({ kind: 'blockEnd', id: `block-${b.id}`, fireAt: at, day: today, blockId: b.id, name, isTask: b.kind === 'task' });
+  }
+  if (data.settings.onboarded) {
+    for (const e of classEndsWithGap(data, now, 3)) {
+      out.push({ kind: 'classEnd', id: `class-end-${e.day}-${e.course.id}`, fireAt: e.at, day: e.day, course: e.course.name });
     }
   }
 

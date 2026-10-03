@@ -189,6 +189,12 @@ export default function ProfileScreen() {
                 onInc={() => setSetting('cutoff', minutesToTime(Math.min(6, cutoffH + 1) * 60))}
               />
             }
+          />
+          <SettingsRow
+            label={t.hours.row}
+            value={t.hours.value(s.dayHours.mode, s.dayHours.start, s.dayHours.end)}
+            chevron
+            onPress={() => router.push('/settings/hours')}
             last
           />
         </SettingsGroup>

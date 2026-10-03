@@ -3,6 +3,7 @@ import type { LocalDate, TaskInstance } from '../domain/types';
 import { COURSE_PALETTE } from '../theme/palette';
 import {
   applyReconcileResult,
+  insertBlock,
   insertCourse,
   insertTask,
   loadAll,
@@ -110,5 +111,28 @@ export function seedDemo(db: Db, today: LocalDate): void {
         );
       }
     });
+  }
+
+  // A few filled days so the timeline and week grid show what time went to.
+  const done = (day: LocalDate, start: string, end: string, b: Partial<Parameters<typeof insertBlock>[1]>) =>
+    insertBlock(db, {
+      startAt: `${day}T${start}:00`,
+      endAt: `${day}T${end}:00`,
+      kind: 'other',
+      label: null,
+      instanceId: null,
+      taskTitle: null,
+      fromPct: null,
+      toPct: null,
+      status: 'done',
+      createdAt: `${day}T${start}:00`,
+      ...b,
+    });
+  for (let back = 3; back >= 1; back--) {
+    const day = addDays(today, -back);
+    done(day, '12:30', '13:15', { kind: 'meal' });
+    done(day, '15:00', '16:10', { kind: 'task', taskTitle: 'Ders tekrarı', fromPct: 20 * (3 - back), toPct: 20 * (4 - back) });
+    done(day, '18:00', '19:00', { kind: 'rest' });
+    done(day, '20:00', '21:00', { kind: 'other', label: 'Spor' });
   }
 }

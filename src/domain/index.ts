@@ -12,3 +12,4 @@ export * from './stats';
 export * from './widget';
 export * from './notifications';
 export * from './taskList';
+export * from './schedule';

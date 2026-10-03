@@ -49,6 +49,15 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 }
 
+/** Screen to open when the notification is tapped. */
+function urlFor(n: PlannedNotification): string | null {
+  if (n.kind === 'classEnd') return '/block/new';
+  if (n.kind === 'blockEnd') return `/block/${n.blockId}`;
+  return null;
+}
+
+const BLOCK_NAMES: Record<string, string> = t.blocks.names;
+
 function content(n: PlannedNotification): { title: string; body: string } {
   switch (n.kind) {
     case 'morning':
@@ -64,6 +73,13 @@ function content(n: PlannedNotification): { title: string; body: string } {
       return { title: t.notifications.startNowTitle, body: t.notifications.startNowBody(n.title, n.daysLeft) };
     case 'lastMinutes':
       return { title: n.title, body: t.notifications.lastMinutesBody(n.minutes) };
+    case 'classEnd':
+      return { title: t.blocks.notifClassEnd(n.course), body: t.blocks.notifClassEndBody };
+    case 'blockEnd':
+      return {
+        title: t.blocks.notifBlockEnd(BLOCK_NAMES[n.name] ?? n.name),
+        body: n.isTask ? t.blocks.notifBlockEndTask : t.blocks.notifBlockEndPassive,
+      };
   }
 }
 
@@ -92,7 +108,7 @@ async function doReschedule(data: AppData): Promise<void> {
     if (fireAt <= realNow + 5_000) continue;
     await Notifications.scheduleNotificationAsync({
       identifier: n.id,
-      content: { ...content(n), sound: 'default' },
+      content: { ...content(n), sound: 'default', data: { url: urlFor(n) } },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(fireAt), channelId: 'default' },
     });
   }
@@ -115,4 +131,17 @@ export async function sendTestNotification(): Promise<boolean> {
     trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: 'default' },
   });
   return true;
+}
+
+/** Opens the screen a tapped notification points to (time blocks). Returns an unsubscribe function. */
+export function listenForNotificationTaps(open: (url: string) => void): () => void {
+  const handle = (r: Notifications.NotificationResponse | null) => {
+    const url = r?.notification.request.content.data?.url;
+    if (typeof url === 'string' && url.startsWith('/')) open(url);
+  };
+  Notifications.getLastNotificationResponseAsync()
+    .then(handle)
+    .catch(() => undefined);
+  const sub = Notifications.addNotificationResponseReceivedListener(handle);
+  return () => sub.remove();
 }

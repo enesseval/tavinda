@@ -8,6 +8,8 @@ import { FlagIcon, LockIcon } from '../../components/icons';
 import { Sheet } from '../../components/Sheet';
 import { DEFAULT_DUE_TIME, isLocalDate } from '../../domain/dates';
 import { dayPlan } from '../../domain/projection';
+import { blocksOn } from '../../domain/schedule';
+import { blockName, clockOf } from '../../ui/blockText';
 import { fmtLongDay, fmtMinutes } from '../../i18n/format';
 import { HEAT_NAMES, t } from '../../i18n/tr';
 import { useNow } from '../../services/clock';
@@ -22,6 +24,7 @@ export default function DaySheet() {
   const { today } = useNow();
   const valid = isLocalDate(date);
   const plan = useMemo(() => (valid ? dayPlan(data, today, date) : null), [data, today, date, valid]);
+  const blocks = useMemo(() => (valid ? blocksOn(data.blocks, date) : []), [data.blocks, date, valid]);
   if (!plan) return null;
 
   const sub = plan.isPast
@@ -104,6 +107,42 @@ export default function DaySheet() {
           </AppText>
         )}
       </View>
+
+      {blocks.length ? (
+        <View style={{ gap: 8 }}>
+          <AppText variant="label" tone="ink2">
+            {t.calendar.legendBlock}
+          </AppText>
+          {blocks.map(({ block }) => (
+            <Touchable
+              key={block.id}
+              accessibilityRole="button"
+              onPress={() => {
+                router.back();
+                setTimeout(() => router.push({ pathname: '/block/[id]', params: { id: String(block.id) } }), 50);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                minHeight: 40,
+                borderBottomWidth: 1,
+                borderBottomColor: c.line,
+              }}
+            >
+              <View
+                style={{ width: 3, height: 22, borderRadius: 2, backgroundColor: block.kind === 'task' ? c.heat[0] : c.ink3 }}
+              />
+              <AppText variant="body" weight="500" style={{ flex: 1 }} numberOfLines={1}>
+                {blockName(block)}
+              </AppText>
+              <AppText variant="caption" tone="ink2" tabular>
+                {clockOf(block.startAt)}–{clockOf(block.endAt)}
+              </AppText>
+            </Touchable>
+          ))}
+        </View>
+      ) : null}
 
       <View style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
