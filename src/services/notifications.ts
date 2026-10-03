@@ -60,6 +60,10 @@ function content(n: PlannedNotification): { title: string; body: string } {
       return { title: t.notifications.lastDayTitle, body: t.notifications.lastDayBody(n.titles) };
     case 'lastDayEvening':
       return { title: n.title, body: t.notifications.eveningBody(n.remainingPct, fmtMinutes(n.remainingMinutes)) };
+    case 'startNow':
+      return { title: t.notifications.startNowTitle, body: t.notifications.startNowBody(n.title, n.daysLeft) };
+    case 'lastMinutes':
+      return { title: n.title, body: t.notifications.lastMinutesBody(n.minutes) };
   }
 }
 

@@ -1,4 +1,11 @@
-import type { Settings } from './types';
+import type { DayHours, Settings } from './types';
+
+export const DEFAULT_DAY_HOURS: DayHours = {
+  mode: 'same',
+  start: '08:00',
+  end: '23:00',
+  perDay: Array.from({ length: 7 }, () => ({ start: '08:00', end: '23:00' })),
+};
 
 export const DEFAULT_SETTINGS: Settings = {
   cutoff: '04:00',
@@ -10,6 +17,7 @@ export const DEFAULT_SETTINGS: Settings = {
   calendarIds: [],
   showWeekend: false,
   onboarded: false,
+  dayHours: DEFAULT_DAY_HOURS,
   timeOffsetMs: 0,
 };
 
@@ -21,6 +29,27 @@ function toInt(v: string | undefined, fallback: number, min: number, max: number
   const n = Number(v);
   if (v === undefined || !Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function parseDayHours(raw: string | undefined): DayHours {
+  const d = DEFAULT_DAY_HOURS;
+  if (!raw) return d;
+  try {
+    const v = JSON.parse(raw) as Partial<DayHours>;
+    const time = (x: unknown, f: string) => (typeof x === 'string' && TIME_RE.test(x) ? x : f);
+    const perDay = Array.from({ length: 7 }, (_, i) => {
+      const p = Array.isArray(v.perDay) ? (v.perDay[i] as Partial<{ start: string; end: string }> | undefined) : undefined;
+      return { start: time(p?.start, d.perDay[i].start), end: time(p?.end, d.perDay[i].end) };
+    });
+    return {
+      mode: v.mode === 'all' || v.mode === 'perDay' ? v.mode : 'same',
+      start: time(v.start, d.start),
+      end: time(v.end, d.end),
+      perDay,
+    };
+  } catch {
+    return d;
+  }
 }
 
 /** Parses raw key/value rows into typed settings; unknown or invalid values fall back to defaults. */
@@ -45,12 +74,13 @@ export function parseSettings(rows: { key: string; value: string }[]): Settings 
     calendarIds,
     showWeekend: raw.showWeekend === '1',
     onboarded: raw.onboarded === '1',
+    dayHours: parseDayHours(raw.dayHours),
     timeOffsetMs: toInt(raw.timeOffsetMs, 0, -1e13, 1e13),
   };
 }
 
 export function serializeSetting<K extends SettingKey>(_key: K, value: Settings[K]): string {
   if (typeof value === 'boolean') return value ? '1' : '0';
-  if (Array.isArray(value)) return JSON.stringify(value);
+  if (Array.isArray(value) || (typeof value === 'object' && value !== null)) return JSON.stringify(value);
   return String(value);
 }

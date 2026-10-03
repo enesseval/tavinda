@@ -1,15 +1,15 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Platform, ScrollView, TextInput, View } from 'react-native';
+import { ScrollView, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../components/AppText';
 import { ToastHost } from '../components/Toast';
-import { Button, Chip, Grabber, SectionLabel, Stepper } from '../components/controls';
+import { Button, Chip, Grabber, SectionLabel, Stepper, Toggle } from '../components/controls';
+import { PickerSheet } from '../components/PickerSheet';
 import { ChevronLeft, DoneBadge, FlagIcon, RepeatIcon } from '../components/icons';
-import { addDays, diffDays, parseLocalDate, toLocalDate } from '../domain/dates';
+import { addDays, dateAtTime, DEFAULT_DUE_TIME, diffDays, minutesToTime, parseLocalDate, toLocalDate } from '../domain/dates';
 import { deadlineHeatValues, deadlinePreviewRamp, suggestedDailyShare, weeklyBaseHeat } from '../domain/heat';
 import type { Course, Task } from '../domain/types';
 import { currentWeeklyWindow } from '../domain/windows';
@@ -24,6 +24,9 @@ import { mix, radii, type ColorTokens } from '../theme/tokens';
 import { Touchable } from '../components/Touchable';
 
 type Step = 'choose' | 'weekly' | 'deadline';
+
+/** "Son dakika" alarm lead times, in minutes. */
+const ALARM_STEPS = [5, 10, 15, 30, 60, 120];
 
 function Field({
   value,
@@ -147,7 +150,9 @@ export default function AddTask() {
   );
   const [dDaily, setDDaily] = useState(editing?.dailyBudgetMinutes ?? data.settings.dailyBudgetMinutes);
   const [dWarn, setDWarn] = useState(editing?.warnDays ?? data.settings.warnDays);
-  const [picker, setPicker] = useState(false);
+  const [dTime, setDTime] = useState(editing?.kind === 'deadline' ? (editing.dueTime ?? DEFAULT_DUE_TIME) : DEFAULT_DUE_TIME);
+  const [dAlarm, setDAlarm] = useState<number | null>(editing?.kind === 'deadline' ? editing.alarmMinutes : null);
+  const [picker, setPicker] = useState<'date' | 'time' | null>(null);
 
   const weeklyCourse: Course | undefined = courses.find((k) => k.id === wCourse);
   const win = weeklyCourse ? currentWeeklyWindow(today, weeklyCourse.weekday) : null;
@@ -198,6 +203,8 @@ export default function AddTask() {
         courseId: dCourse,
         estimatedMinutes: dHours * 60,
         dueAt: dDue < today ? today : dDue,
+        dueTime: dTime,
+        alarmMinutes: dAlarm,
         dailyBudgetMinutes: dDaily,
         warnDays: dWarn,
       };
@@ -431,27 +438,8 @@ export default function AddTask() {
                 overflow: 'hidden',
               }}
             >
-              <Row
-                c={c}
-                label={t.add.dueDate}
-                value={`${fmtLongDay(dDue)} · ${t.add.dueTime}`}
-                onPress={() => setPicker((p) => !p)}
-                last={!picker}
-              />
-              {picker ? (
-                <DateTimePicker
-                  value={parseLocalDate(dDue)}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  minimumDate={parseLocalDate(today)}
-                  locale="tr-TR"
-                  accentColor={c.ink}
-                  onChange={(e, d) => {
-                    if (Platform.OS !== 'ios') setPicker(false);
-                    if (e.type === 'set' && d) setDDue(toLocalDate(d));
-                  }}
-                />
-              ) : null}
+              <Row c={c} label={t.add.dueDate} value={fmtLongDay(dDue)} onPress={() => setPicker('date')} />
+              <Row c={c} label={t.add.dueHour} value={dTime} onPress={() => setPicker('time')} last />
               <View style={{ flexDirection: 'row', gap: 6, padding: 12 }}>
                 {t.add.spans.map(([n, label], i) => (
                   <View key={n} style={{ flex: 1 }}>
@@ -518,6 +506,61 @@ export default function AddTask() {
                 </View>
               ))}
             </View>
+            <AppText variant="footnote" tone="ink2" style={{ paddingTop: 8, paddingHorizontal: 4 }}>
+              {t.add.warnNote(dWarn)}
+            </AppText>
+
+            <SectionLabel>{t.add.alarm}</SectionLabel>
+            <View
+              style={{
+                backgroundColor: c.surface,
+                borderWidth: 1,
+                borderColor: c.line,
+                borderRadius: radii.input,
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  minHeight: 52,
+                  marginLeft: 16,
+                  paddingRight: 12,
+                  borderBottomWidth: dAlarm != null ? 0.5 : 0,
+                  borderBottomColor: c.line,
+                }}
+              >
+                <AppText variant="bodyLarge">{t.add.alarmToggle}</AppText>
+                <Toggle label={t.add.alarmToggle} value={dAlarm != null} onChange={(v) => setDAlarm(v ? 10 : null)} />
+              </View>
+              {dAlarm != null ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    minHeight: 52,
+                    marginLeft: 16,
+                    paddingRight: 12,
+                  }}
+                >
+                  <AppText variant="headline" tabular>
+                    {t.add.alarmValue(dAlarm)}
+                  </AppText>
+                  <Stepper
+                    onDec={() => setDAlarm((v) => ALARM_STEPS[Math.max(0, ALARM_STEPS.indexOf(v ?? 10) - 1)])}
+                    onInc={() =>
+                      setDAlarm((v) => ALARM_STEPS[Math.min(ALARM_STEPS.length - 1, ALARM_STEPS.indexOf(v ?? 10) + 1)])
+                    }
+                  />
+                </View>
+              ) : null}
+            </View>
+            <AppText variant="footnote" tone="ink2" style={{ paddingTop: 8, paddingHorizontal: 4 }}>
+              {t.add.alarmNote}
+            </AppText>
 
             <View
               accessible
@@ -562,6 +605,29 @@ export default function AddTask() {
         ) : null}
       </ScrollView>
 
+      <PickerSheet
+        visible={picker === 'date'}
+        mode="date"
+        title={t.add.dueDate}
+        value={parseLocalDate(dDue)}
+        minimumDate={parseLocalDate(today)}
+        onCancel={() => setPicker(null)}
+        onDone={(d) => {
+          setDDue(toLocalDate(d));
+          setPicker(null);
+        }}
+      />
+      <PickerSheet
+        visible={picker === 'time'}
+        mode="time"
+        title={t.add.dueHour}
+        value={dateAtTime(dDue, dTime)}
+        onCancel={() => setPicker(null)}
+        onDone={(d) => {
+          setDTime(minutesToTime(d.getHours() * 60 + d.getMinutes()));
+          setPicker(null);
+        }}
+      />
       <ToastHost bottom={insets.bottom + 24} />
       {added ? (
         <Animated.View

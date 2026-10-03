@@ -79,6 +79,8 @@ export interface DeadlineInput {
   courseId: number | null;
   estimatedMinutes: number;
   dueAt: LocalDate;
+  dueTime: string;
+  alarmMinutes: number | null;
   dailyBudgetMinutes: number;
   warnDays: number;
 }
@@ -105,6 +107,8 @@ export function createDeadlineTask(input: DeadlineInput): number {
     courseId: input.courseId,
     estimatedMinutes: input.estimatedMinutes,
     dueAt: input.dueAt,
+    dueTime: input.dueTime,
+    alarmMinutes: input.alarmMinutes,
     dailyBudgetMinutes: input.dailyBudgetMinutes,
     warnDays: input.warnDays,
     createdAt: createdStamp(),

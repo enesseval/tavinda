@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale/tr';
 
-import { diffDays, parseLocalDate } from '../domain/dates';
+import { countdownParts, diffDays, parseLocalDate } from '../domain/dates';
 import type { LocalDate } from '../domain/types';
 
 /** '1 sa 25 dk', '40 dk'. Rounded to 5 minutes, at least 5. */
@@ -65,3 +65,14 @@ export function fmtRelativeDay(ld: LocalDate, today: LocalDate): string {
 
 /** Turkish-aware upper case for course codes. */
 export const upperTr = (s: string) => s.toLocaleUpperCase('tr-TR');
+
+/** '2 gün 15 sa 50 dk', '5 sa 20 dk', '35 dk'; null once the moment has passed. */
+export function fmtCountdown(now: Date, due: Date): string | null {
+  const p = countdownParts(now, due);
+  if (p.past) return null;
+  const parts: string[] = [];
+  if (p.days) parts.push(`${p.days} gün`);
+  if (p.hours) parts.push(`${p.hours} sa`);
+  if (p.minutes || !parts.length) parts.push(`${p.minutes} dk`);
+  return parts.join(' ');
+}

@@ -1,4 +1,5 @@
-import { addDays, logicalDate, logicalDateTime } from './dates';
+import { addDays, dueInstant, logicalDate, logicalDateTime } from './dates';
+import { warnDaysFor } from './heat';
 import { applyReconcile, reconcile } from './reconcile';
 import { buildTodayModel } from './today';
 import type { AppData, LocalDate } from './types';
@@ -18,6 +19,8 @@ export type PlannedNotification =
       hottestTitle: string | null;
     }
   | { kind: 'lastDayMorning'; id: string; fireAt: Date; day: LocalDate; titles: string[] }
+  | { kind: 'startNow'; id: string; fireAt: Date; day: LocalDate; title: string; daysLeft: number }
+  | { kind: 'lastMinutes'; id: string; fireAt: Date; day: LocalDate; title: string; minutes: number }
   | {
       kind: 'lastDayEvening';
       id: string;
@@ -86,6 +89,32 @@ export function planNotifications(data: AppData, now: Date, horizonDays = 7): Pl
           title: i.task.title,
           remainingPct: i.remainingPct,
           remainingMinutes: i.remainingMinutes,
+        });
+      }
+    }
+  }
+
+  // Deadline tasks: "start now" on the warn day, and the optional last-minutes alarm.
+  for (const task of data.tasks) {
+    if (task.kind !== 'deadline' || task.archivedAt) continue;
+    const inst = data.instances.find((i) => i.taskId === task.id && i.status === 'active');
+    if (!inst) continue;
+    const warn = warnDaysFor(task, data.settings);
+    const warnDay = addDays(inst.windowEnd, -warn);
+    const warnAt = logicalDateTime(warnDay, morningTime, cutoff);
+    if (warnDay > inst.windowStart && warnAt > now && inst.progress < 100) {
+      out.push({ kind: 'startNow', id: `start-${inst.id}`, fireAt: warnAt, day: warnDay, title: task.title, daysLeft: warn });
+    }
+    if (task.alarmMinutes != null) {
+      const at = new Date(dueInstant(inst, task).getTime() - task.alarmMinutes * 60_000);
+      if (at > now) {
+        out.push({
+          kind: 'lastMinutes',
+          id: `alarm-${inst.id}`,
+          fireAt: at,
+          day: inst.windowEnd,
+          title: task.title,
+          minutes: task.alarmMinutes,
         });
       }
     }

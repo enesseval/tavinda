@@ -31,7 +31,7 @@ describe('migrations', () => {
     const tables = db
       .all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
       .map((t) => t.name);
-    expect(tables).toEqual(['courses', 'defer_logs', 'progress_logs', 'settings', 'task_instances', 'tasks']);
+    expect(tables).toEqual(['courses', 'defer_logs', 'progress_logs', 'settings', 'task_instances', 'tasks', 'time_blocks']);
     // Running again is a no-op.
     expect(migrate(db)).toBe(LATEST_VERSION);
     db.close();
@@ -43,6 +43,38 @@ describe('migrations', () => {
     for (let v = 1; v <= LATEST_VERSION; v++) {
       expect(migrate(db, MIGRATIONS.slice(0, v))).toBe(v);
     }
+    db.close();
+  });
+});
+
+describe('migration 003', () => {
+  test('moves existing course colors to the new palette and adds deadline time + blocks', () => {
+    const db = openTestDb();
+    migrate(db, MIGRATIONS.slice(0, 2));
+    db.run(
+      `INSERT INTO courses (name, short_name, color, source, weekday, start_time, end_time)
+       VALUES ('Fizik', 'FİZ', '#93A3BC', 'manual', 1, '09:00', '10:00'), ('Kimya', 'KİM', '#123456', 'manual', 2, '09:00', '10:00')`,
+    );
+    migrate(db);
+    expect(db.all<{ color: string }>('SELECT color FROM courses ORDER BY id').map((r) => r.color)).toEqual([
+      '#4F8AE8',
+      '#123456',
+    ]);
+    const id = insertTask(db, {
+      kind: 'deadline',
+      title: 'Rapor',
+      courseId: null,
+      estimatedMinutes: 60,
+      dueAt: '2026-11-01',
+      dueTime: '17:00',
+      alarmMinutes: 10,
+      dailyBudgetMinutes: 45,
+      warnDays: 3,
+      createdAt: '2026-10-01T10:00:00',
+    });
+    const task = loadAll(db).tasks.find((t) => t.id === id)!;
+    expect(task).toMatchObject({ dueTime: '17:00', alarmMinutes: 10 });
+    expect(loadAll(db).blocks).toEqual([]);
     db.close();
   });
 });

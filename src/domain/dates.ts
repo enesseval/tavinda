@@ -90,3 +90,25 @@ export function logicalDateTime(ld: LocalDate, t: LocalTime, cutoff: LocalTime):
 export function toLocalTimestamp(d: Date): string {
   return format(d, "yyyy-MM-dd'T'HH:mm:ss");
 }
+
+/** Deadline hour when none is given. */
+export const DEFAULT_DUE_TIME: LocalTime = '23:59';
+
+/**
+ * The moment work is due: the last day of the window at the task's hour
+ * (deadline tasks) or at 23:59 (weekly tasks).
+ */
+export function dueInstant(
+  inst: { windowEnd: LocalDate },
+  task: { kind: 'weekly' | 'deadline'; dueTime: LocalTime | null },
+): Date {
+  return dateAtTime(inst.windowEnd, task.kind === 'deadline' ? (task.dueTime ?? DEFAULT_DUE_TIME) : DEFAULT_DUE_TIME);
+}
+
+/** Whole days, hours and minutes until `due` (negative parts never returned). */
+export function countdownParts(now: Date, due: Date): { days: number; hours: number; minutes: number; past: boolean } {
+  const ms = due.getTime() - now.getTime();
+  if (ms <= 0) return { days: 0, hours: 0, minutes: 0, past: true };
+  const total = Math.max(1, Math.floor(ms / 60_000));
+  return { days: Math.floor(total / 1440), hours: Math.floor((total % 1440) / 60), minutes: total % 60, past: false };
+}

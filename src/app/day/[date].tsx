@@ -6,7 +6,7 @@ import { AppText } from '../../components/AppText';
 import { CloseButton } from '../../components/controls';
 import { FlagIcon, LockIcon } from '../../components/icons';
 import { Sheet } from '../../components/Sheet';
-import { isLocalDate } from '../../domain/dates';
+import { DEFAULT_DUE_TIME, isLocalDate } from '../../domain/dates';
 import { dayPlan } from '../../domain/projection';
 import { fmtLongDay, fmtMinutes } from '../../i18n/format';
 import { HEAT_NAMES, t } from '../../i18n/tr';
@@ -67,7 +67,7 @@ export default function DaySheet() {
         >
           <FlagIcon color={c.ink} size={14} filled />
           <AppText variant="body" weight="500" style={{ flexShrink: 1 }}>
-            {t.calendar.dueBanner(d.task.title, d.course?.shortName ?? null)}
+            {t.calendar.dueBanner(d.task.title, d.course?.shortName ?? null, d.task.dueTime ?? DEFAULT_DUE_TIME)}
           </AppText>
         </View>
       ))}

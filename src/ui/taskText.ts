@@ -1,11 +1,18 @@
 import type { TaskCardModel } from '../components/TaskCard';
+import { dueInstant } from '../domain/dates';
 import type { TodayItem } from '../domain/today';
 import type { LocalDate } from '../domain/types';
-import { fmtMinutes, fmtRelativeDay, fmtShortDate, fmtWeekday } from '../i18n/format';
+import { fmtCountdown, fmtMinutes, fmtRelativeDay, fmtShortDate, fmtWeekday } from '../i18n/format';
 import { t } from '../i18n/tr';
 
+/** '2 gün 15 sa 50 dk kaldı' until the work is due, or 'Süre doldu'. */
+export function timeLeftLine(i: Pick<TodayItem, 'instance' | 'task'>, now: Date): string {
+  const left = fmtCountdown(now, dueInstant(i.instance, i.task));
+  return left ? t.card.timeLeft(left) : t.card.timeUp;
+}
+
 /** Secondary line on a task card, following the design's states. */
-export function cardSub(i: Omit<TodayItem, 'group'>, today: LocalDate): string {
+export function cardSub(i: Omit<TodayItem, 'group'>, today: LocalDate, now: Date): string {
   const inst = i.instance;
   if (inst.status === 'done') return t.card.done;
   if (inst.status === 'missed') {
@@ -14,13 +21,13 @@ export function cardSub(i: Omit<TodayItem, 'group'>, today: LocalDate): string {
   if (i.overdue) return t.card.overdue(i.overdueDays);
   if (inst.scheduledDate > today) return t.card.deferredTo(fmtRelativeDay(inst.scheduledDate, today));
   if (i.heat === 4) return i.deferState === 'lastChance' ? t.card.lastChance : t.card.lastDay;
-  if (i.heat === 3) return t.card.tooMuch(fmtMinutes(i.remainingMinutes));
-  if (inst.progress > 0) return t.card.remaining(i.remainingPct, fmtMinutes(i.remainingMinutes));
-  if (i.task.kind === 'weekly') return t.card.endsOn(fmtWeekday(inst.windowEnd));
-  return t.card.daysLeft(Math.max(0, i.daysLeft - 1) || 1);
+  const left = timeLeftLine(i, now);
+  if (i.shareMinutes === 0 && i.doneTodayMinutes > 0) return `${t.card.doneForToday} · ${left}`;
+  if (inst.progress > 0) return `${t.card.remainingShort(fmtMinutes(i.remainingMinutes))} · ${left}`;
+  return left;
 }
 
-export function toCardModel(i: Omit<TodayItem, 'group'>, today: LocalDate, leaving = false): TaskCardModel {
+export function toCardModel(i: Omit<TodayItem, 'group'>, today: LocalDate, now: Date, leaving = false): TaskCardModel {
   return {
     id: i.instance.id,
     title: i.task.title,
@@ -28,7 +35,7 @@ export function toCardModel(i: Omit<TodayItem, 'group'>, today: LocalDate, leavi
     courseColor: i.course?.color ?? null,
     heat: i.heat,
     progress: i.instance.progress,
-    sub: cardSub(i, today),
+    sub: cardSub(i, today, now),
     carried: i.carried,
     done: i.instance.status === 'done',
     missed: i.instance.status === 'missed',

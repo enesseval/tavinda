@@ -10,6 +10,7 @@ import type {
   Settings,
   Task,
   TaskInstance,
+  TimeBlock,
 } from '../domain/types';
 import type { Db, SqlValue } from './types';
 
@@ -36,6 +37,22 @@ interface TaskRow {
   warn_days: number | null;
   created_at: string;
   archived_at: string | null;
+  due_time: string | null;
+  alarm_minutes: number | null;
+}
+
+interface BlockRow {
+  id: number;
+  start_at: string;
+  end_at: string;
+  kind: TimeBlock['kind'];
+  label: string | null;
+  instance_id: number | null;
+  task_title: string | null;
+  from_pct: number | null;
+  to_pct: number | null;
+  status: 'running' | 'done';
+  created_at: string;
 }
 
 interface InstanceRow {
@@ -90,6 +107,22 @@ const toTask = (r: TaskRow): Task => ({
   warnDays: r.warn_days,
   createdAt: r.created_at,
   archivedAt: r.archived_at,
+  dueTime: r.due_time,
+  alarmMinutes: r.alarm_minutes,
+});
+
+const toBlock = (r: BlockRow): TimeBlock => ({
+  id: r.id,
+  startAt: r.start_at,
+  endAt: r.end_at,
+  kind: r.kind,
+  label: r.label,
+  instanceId: r.instance_id,
+  taskTitle: r.task_title,
+  fromPct: r.from_pct,
+  toPct: r.to_pct,
+  status: r.status,
+  createdAt: r.created_at,
 });
 
 const toInstance = (r: InstanceRow): TaskInstance => ({
@@ -132,6 +165,7 @@ export function loadAll(db: Db): AppData {
     instances: db.all<InstanceRow>('SELECT * FROM task_instances ORDER BY id').map(toInstance),
     progressLogs: db.all<ProgressLogRow>('SELECT * FROM progress_logs ORDER BY id').map(toProgressLog),
     deferLogs: db.all<DeferLogRow>('SELECT * FROM defer_logs ORDER BY id').map(toDeferLog),
+    blocks: db.all<BlockRow>('SELECT * FROM time_blocks ORDER BY start_at, id').map(toBlock),
     settings: loadSettings(db),
   };
 }
@@ -161,22 +195,58 @@ export function deleteCourse(db: Db, id: number): void {
   });
 }
 
-export type NewTask = Omit<Task, 'id' | 'archivedAt'>;
+export type NewTask = Omit<Task, 'id' | 'archivedAt' | 'dueTime' | 'alarmMinutes'> &
+  Partial<Pick<Task, 'dueTime' | 'alarmMinutes'>>;
 
 export function insertTask(db: Db, t: NewTask): number {
   return db.run(
-    `INSERT INTO tasks (kind, title, course_id, estimated_minutes, due_at, daily_budget_minutes, warn_days, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [t.kind, t.title, t.courseId, t.estimatedMinutes, t.dueAt, t.dailyBudgetMinutes, t.warnDays, t.createdAt],
+    `INSERT INTO tasks (kind, title, course_id, estimated_minutes, due_at, daily_budget_minutes, warn_days, created_at,
+       due_time, alarm_minutes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      t.kind,
+      t.title,
+      t.courseId,
+      t.estimatedMinutes,
+      t.dueAt,
+      t.dailyBudgetMinutes,
+      t.warnDays,
+      t.createdAt,
+      t.dueTime ?? null,
+      t.alarmMinutes ?? null,
+    ],
   ).lastInsertRowId;
 }
 
 export function updateTaskRow(db: Db, t: Task): void {
   db.run(
-    `UPDATE tasks SET title = ?, course_id = ?, estimated_minutes = ?, due_at = ?, daily_budget_minutes = ?, warn_days = ?
+    `UPDATE tasks SET title = ?, course_id = ?, estimated_minutes = ?, due_at = ?, daily_budget_minutes = ?, warn_days = ?,
+       due_time = ?, alarm_minutes = ?
      WHERE id = ?`,
-    [t.title, t.courseId, t.estimatedMinutes, t.dueAt, t.dailyBudgetMinutes, t.warnDays, t.id],
+    [t.title, t.courseId, t.estimatedMinutes, t.dueAt, t.dailyBudgetMinutes, t.warnDays, t.dueTime, t.alarmMinutes, t.id],
   );
+}
+
+export type NewBlock = Omit<TimeBlock, 'id'>;
+
+export function insertBlock(db: Db, b: NewBlock): number {
+  return db.run(
+    `INSERT INTO time_blocks (start_at, end_at, kind, label, instance_id, task_title, from_pct, to_pct, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [b.startAt, b.endAt, b.kind, b.label, b.instanceId, b.taskTitle, b.fromPct, b.toPct, b.status, b.createdAt],
+  ).lastInsertRowId;
+}
+
+export function updateBlock(db: Db, b: TimeBlock): void {
+  db.run(
+    `UPDATE time_blocks SET start_at = ?, end_at = ?, kind = ?, label = ?, instance_id = ?, task_title = ?, from_pct = ?,
+       to_pct = ?, status = ? WHERE id = ?`,
+    [b.startAt, b.endAt, b.kind, b.label, b.instanceId, b.taskTitle, b.fromPct, b.toPct, b.status, b.id],
+  );
+}
+
+export function deleteBlock(db: Db, id: number): void {
+  db.run('DELETE FROM time_blocks WHERE id = ?', [id]);
 }
 
 export function deleteTask(db: Db, id: number): void {
@@ -295,6 +365,7 @@ export function undoWrite(db: Db, receipt: WriteReceipt): void {
 /** Deletes all user data but keeps the schema. */
 export function wipeAll(db: Db): void {
   db.transaction(() => {
+    db.run('DELETE FROM time_blocks');
     db.run('DELETE FROM defer_logs');
     db.run('DELETE FROM progress_logs');
     db.run('DELETE FROM task_instances');

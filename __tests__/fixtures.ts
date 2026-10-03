@@ -30,6 +30,8 @@ export function weeklyTask(over: Partial<Task> = {}): Task {
     warnDays: null,
     createdAt: '2026-09-28T10:00:00',
     archivedAt: null,
+    dueTime: null,
+    alarmMinutes: null,
     ...over,
   };
 }
@@ -46,6 +48,8 @@ export function deadlineTask(over: Partial<Task> = {}): Task {
     warnDays: 5,
     createdAt: '2026-09-30T09:00:00',
     archivedAt: null,
+    dueTime: null,
+    alarmMinutes: null,
     ...over,
   };
 }
@@ -72,6 +76,7 @@ export function appData(over: Partial<AppData> = {}): AppData {
     instances: [],
     progressLogs: [],
     deferLogs: [],
+    blocks: [],
     settings,
     ...over,
   };

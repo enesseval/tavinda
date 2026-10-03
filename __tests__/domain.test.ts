@@ -3,6 +3,8 @@ import {
   applyDefer,
   applyProgress,
   applyReconcile,
+  countdownParts,
+  dueInstant,
   buildTodayModel,
   canDefer,
   deadlineHeat,
@@ -235,5 +237,33 @@ describe('week window rows', () => {
     const [cur, next] = rows[0].segments;
     expect(cur).toMatchObject({ fromCol: 0, toCol: 1, clippedLeft: true, heats: [3, 4], projected: false });
     expect(next).toMatchObject({ fromCol: 2, toCol: 6, clippedRight: true, heats: [0, 0, 0, 1, 2], projected: true });
+  });
+});
+
+describe('countdown and deadline reminders', () => {
+  test('due instant: deadline hour or 23:59 for weekly; countdown parts', () => {
+    const due = dueInstant({ windowEnd: '2026-10-04' }, { kind: 'deadline', dueTime: '17:00' });
+    expect(due.getHours()).toBe(17);
+    expect(dueInstant({ windowEnd: '2026-10-04' }, { kind: 'weekly', dueTime: '09:00' }).getMinutes()).toBe(59);
+    expect(countdownParts(new Date(2026, 9, 2, 1, 9), new Date(2026, 9, 4, 17, 0))).toEqual({
+      days: 2,
+      hours: 15,
+      minutes: 51,
+      past: false,
+    });
+    expect(countdownParts(new Date(2026, 9, 5), due).past).toBe(true);
+  });
+
+  test('warn day brings a "start now" reminder; the last-minutes alarm is opt-in', () => {
+    const task = deadlineTask({ dueAt: '2026-10-20', warnDays: 3, dueTime: '17:00', alarmMinutes: 10 });
+    const inst = instance({ id: 200, taskId: 20, windowStart: '2026-09-30', windowEnd: '2026-10-20' });
+    const now = new Date(2026, 8, 30, 12, 0);
+    const plan = planNotifications(appData({ tasks: [task], instances: [inst] }), now, 1);
+    const start = plan.find((p) => p.kind === 'startNow');
+    expect(start?.day).toBe('2026-10-17');
+    const alarm = plan.find((p) => p.kind === 'lastMinutes');
+    expect(alarm?.fireAt.getTime()).toBe(new Date(2026, 9, 20, 16, 50).getTime());
+    const off = planNotifications(appData({ tasks: [{ ...task, alarmMinutes: null }], instances: [inst] }), now, 1);
+    expect(off.some((p) => p.kind === 'lastMinutes')).toBe(false);
   });
 });

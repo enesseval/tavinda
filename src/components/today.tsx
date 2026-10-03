@@ -4,7 +4,8 @@ import { ScrollView, View } from 'react-native';
 import { timeToMinutes } from '../domain/dates';
 import type { LoadSegment, TodayItem } from '../domain/today';
 import type { Course } from '../domain/types';
-import { fmtMinutes, fmtRelativeDay, fmtWeekday } from '../i18n/format';
+import { fmtMinutes } from '../i18n/format';
+import { timeLeftLine } from '../ui/taskText';
 import { HEAT_NAMES, t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
 import { heatBorder, radii } from '../theme/tokens';
@@ -276,22 +277,22 @@ export function CalmCard({
   );
 }
 
-export function heroLine(item: TodayItem, today: string): string {
-  const share = fmtMinutes(item.shareMinutes);
-  if (item.heat === 4) return t.today.heroLastDay(fmtMinutes(item.remainingMinutes));
-  if (item.task.kind === 'deadline') return t.today.heroDue(`${fmtRelativeDay(item.instance.windowEnd, today)} 23:59`, share);
-  return t.today.heroWeekly(fmtWeekday(item.instance.windowEnd), share);
+export function heroLine(item: TodayItem, now: Date): string {
+  const left = timeLeftLine(item, now);
+  if (item.overdue || item.heat === 4) return `${left} · ${t.card.remainingShort(fmtMinutes(item.remainingMinutes))}`;
+  if (item.shareMinutes === 0) return `${left} · ${t.card.doneForToday}`;
+  return `${left} · ${t.today.shareToday(fmtMinutes(item.shareMinutes))}`;
 }
 
 export function HeroCard({
   item,
-  today,
+  now,
   onProgress,
   onDefer,
   onOpen,
 }: {
   item: TodayItem;
-  today: string;
+  now: Date;
   onProgress: () => void;
   onDefer: () => void;
   onOpen: () => void;
@@ -348,7 +349,7 @@ export function HeroCard({
               </AppText>
             </View>
             <AppText variant="body" tone="ink2" tabular>
-              {heroLine(item, today)}
+              {heroLine(item, now)}
             </AppText>
           </View>
         </Touchable>

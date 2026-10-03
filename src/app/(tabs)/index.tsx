@@ -167,7 +167,7 @@ export default function TodayScreen() {
         return (
           <HeroCard
             item={row.item}
-            today={today}
+            now={now}
             onOpen={() => actions.openDetail(row.item.task.id)}
             onProgress={() => actions.openProgress(row.item.instance.id)}
             onDefer={() => actions.defer(row.item)}
@@ -219,7 +219,7 @@ export default function TodayScreen() {
         return (
           <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
             <TaskCard
-              task={toCardModel(row.item, today, !!leaving[row.item.instance.id])}
+              task={toCardModel(row.item, today, now, !!leaving[row.item.instance.id])}
               onTap={() =>
                 row.item.instance.status === 'active'
                   ? actions.openProgress(row.item.instance.id)

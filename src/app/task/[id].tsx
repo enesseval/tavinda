@@ -7,6 +7,7 @@ import { AppText } from '../../components/AppText';
 import { Button, Card, CoursePill, HeatPill } from '../../components/controls';
 import { HistoryChart } from '../../components/HistoryChart';
 import { ChevronLeft } from '../../components/icons';
+import { DEFAULT_DUE_TIME } from '../../domain/dates';
 import { instanceHistory } from '../../domain/projection';
 import { makeItem } from '../../domain/today';
 import { fmtHoursClock, fmtLongDay, fmtMinutes, fmtRange, fmtRelativeDay } from '../../i18n/format';
@@ -152,7 +153,7 @@ export default function TaskDetail() {
                 {fmtRelativeDay(current.windowEnd, today)}
               </AppText>
               <AppText variant="caption" tone="ink2">
-                {task.kind === 'deadline' ? t.detail.dueAt : t.detail.lastDay}
+                {task.kind === 'deadline' ? t.detail.dueAt(task.dueTime ?? DEFAULT_DUE_TIME) : t.detail.lastDay}
               </AppText>
             </View>
           </View>

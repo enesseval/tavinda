@@ -6,7 +6,7 @@ import { AppText } from '../../components/AppText';
 import { Button, CloseButton, CoursePill, HeatPill } from '../../components/controls';
 import { HistoryChart } from '../../components/HistoryChart';
 import { Sheet } from '../../components/Sheet';
-import { addDays } from '../../domain/dates';
+import { addDays, DEFAULT_DUE_TIME } from '../../domain/dates';
 import { instanceHistory } from '../../domain/projection';
 import type { TodayItem } from '../../domain/today';
 import { fmtDayShortDate, fmtMinutes } from '../../i18n/format';
@@ -39,7 +39,7 @@ export default function WindowSheet() {
 
   const range =
     item.task.kind === 'deadline'
-      ? t.calendar.windowDue(fmtDayShortDate(inst.windowEnd))
+      ? t.calendar.windowDue(fmtDayShortDate(inst.windowEnd), item.task.dueTime ?? DEFAULT_DUE_TIME)
       : `${t.calendar.windowRange(fmtDayShortDate(inst.windowStart), fmtDayShortDate(inst.windowEnd))}${
           inst.windowEnd === addDays(today, 1) ? ` · ${t.calendar.lastDayTomorrow}` : ''
         }`;

@@ -33,6 +33,10 @@ export interface Task {
   estimatedMinutes: number;
   /** Deadline tasks only. */
   dueAt: LocalDate | null;
+  /** Deadline hour; null means 23:59. */
+  dueTime: LocalTime | null;
+  /** Minutes before the deadline for an extra "last minutes" alarm; null = off. */
+  alarmMinutes: number | null;
   dailyBudgetMinutes: number | null;
   warnDays: number | null;
   /** Local timestamp 'YYYY-MM-DDTHH:mm:ss'. */
@@ -72,6 +76,38 @@ export interface DeferLog {
   createdAt: string;
 }
 
+export type BlockKind = 'sleep' | 'meal' | 'rest' | 'other' | 'task';
+
+/** A stretch of the day the user said they would spend on something. */
+export interface TimeBlock {
+  id: number;
+  /** Local timestamps 'YYYY-MM-DDTHH:mm:ss'. */
+  startAt: string;
+  endAt: string;
+  kind: BlockKind;
+  /** Free text for 'other'. */
+  label: string | null;
+  instanceId: number | null;
+  /** Task title at the time, so history keeps the name. */
+  taskTitle: string | null;
+  fromPct: number | null;
+  toPct: number | null;
+  status: 'running' | 'done';
+  createdAt: string;
+}
+
+export type DayHoursMode = 'all' | 'same' | 'perDay';
+
+/** When the user's day runs; gaps are only asked about inside these hours. */
+export interface DayHours {
+  mode: DayHoursMode;
+  /** Used for 'same'. */
+  start: LocalTime;
+  end: LocalTime;
+  /** ISO weekday order Mon…Sun, used for 'perDay'. */
+  perDay: { start: LocalTime; end: LocalTime }[];
+}
+
 export interface Settings {
   cutoff: LocalTime;
   lockMode: LockMode;
@@ -82,6 +118,7 @@ export interface Settings {
   calendarIds: string[];
   showWeekend: boolean;
   onboarded: boolean;
+  dayHours: DayHours;
   /** Debug time travel: milliseconds added to the real clock. */
   timeOffsetMs: number;
 }
@@ -92,5 +129,6 @@ export interface AppData {
   instances: TaskInstance[];
   progressLogs: ProgressLog[];
   deferLogs: DeferLog[];
+  blocks: TimeBlock[];
   settings: Settings;
 }
