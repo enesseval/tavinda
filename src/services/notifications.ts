@@ -135,13 +135,27 @@ export async function sendTestNotification(): Promise<boolean> {
 
 /** Opens the screen a tapped notification points to (time blocks). Returns an unsubscribe function. */
 export function listenForNotificationTaps(open: (url: string) => void): () => void {
+  let lastKey: string | null = null;
   const handle = (r: Notifications.NotificationResponse | null) => {
     const url = r?.notification.request.content.data?.url;
-    if (typeof url === 'string' && url.startsWith('/')) open(url);
+    if (!r || typeof url !== 'string' || !url.startsWith('/')) return;
+    // The launch response and the listener can report the same tap.
+    const key = `${r.notification.request.identifier}@${r.notification.date}`;
+    if (key === lastKey) return;
+    lastKey = key;
+    // Handled once: without clearing, the same tap would reopen the sheet on every launch.
+    try {
+      Notifications.clearLastNotificationResponse();
+    } catch {
+      // Older native module: nothing to clear.
+    }
+    open(url);
   };
-  Notifications.getLastNotificationResponseAsync()
-    .then(handle)
-    .catch(() => undefined);
+  try {
+    handle(Notifications.getLastNotificationResponse());
+  } catch {
+    // Not available (tests, web).
+  }
   const sub = Notifications.addNotificationResponseReceivedListener(handle);
   return () => sub.remove();
 }
