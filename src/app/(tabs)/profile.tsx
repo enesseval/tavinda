@@ -1,13 +1,13 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
 import { Card, Segmented, Stepper } from '../../components/controls';
 import { Fab } from '../../components/Fab';
+import { PickerSheet } from '../../components/PickerSheet';
 import { SettingsGroup, SettingsRow } from '../../components/settings';
 import { dateAtTime, minutesToTime, parseLocalDate, timeToMinutes, toLocalDate } from '../../domain/dates';
 import { heatFor, paceForInstance, shareForInstance } from '../../domain/heat';
@@ -30,6 +30,7 @@ import {
 import { openAppSettings } from '../../services/calendar';
 import { useOnboarding, useUi } from '../../store/ui';
 import { useTheme } from '../../theme/theme';
+import { groupCourses } from '../../ui/courseDrafts';
 
 const DAY_MS = 86_400_000;
 
@@ -201,7 +202,7 @@ export default function ProfileScreen() {
           />
           <SettingsRow
             label={t.settings.courses}
-            value={t.settings.coursesValue(data.courses.length)}
+            value={t.settings.coursesValue(groupCourses(data.courses).length)}
             chevron
             onPress={() => router.push('/courses')}
             last
@@ -264,28 +265,7 @@ export default function ProfileScreen() {
         </SettingsGroup>
 
         <SettingsGroup title={t.settings.groupNotifications} footer={t.settings.notifFoot}>
-          <SettingsRow
-            label={t.settings.morning}
-            value={s.morningTime}
-            chevron
-            onPress={() => setPicker((p) => (p === 'morning' ? null : 'morning'))}
-            below={
-              picker === 'morning' ? (
-                <DateTimePicker
-                  value={dateAtTime(today, s.morningTime)}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  minuteInterval={5}
-                  locale="tr-TR"
-                  is24Hour
-                  onChange={(e, d) => {
-                    if (Platform.OS !== 'ios') setPicker(null);
-                    if (e.type === 'set' && d) setSetting('morningTime', minutesToTime(d.getHours() * 60 + d.getMinutes()));
-                  }}
-                />
-              ) : null
-            }
-          />
+          <SettingsRow label={t.settings.morning} value={s.morningTime} chevron onPress={() => setPicker('morning')} />
           <SettingsRow
             label={t.settings.notifPermission}
             value={notif === 'granted' ? t.settings.notifOn : t.settings.notifOff}
@@ -325,26 +305,7 @@ export default function ProfileScreen() {
           <SettingsRow label={t.debug.clock} value={s.timeOffsetMs ? fmtLongDay(toLocalDate(now)) : t.debug.real} />
           <SettingsRow label={t.debug.plusDay} chevron onPress={() => timeTravelBy(DAY_MS)} />
           <SettingsRow label={t.debug.plusWeek} chevron onPress={() => timeTravelBy(7 * DAY_MS)} />
-          <SettingsRow
-            label={t.debug.pickDate}
-            chevron
-            onPress={() => setPicker((p) => (p === 'debugDate' ? null : 'debugDate'))}
-            below={
-              picker === 'debugDate' ? (
-                <DateTimePicker
-                  value={parseLocalDate(today)}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  locale="tr-TR"
-                  accentColor={c.ink}
-                  onChange={(e, d) => {
-                    if (Platform.OS !== 'ios') setPicker(null);
-                    if (e.type === 'set' && d) timeTravelTo(d);
-                  }}
-                />
-              ) : null
-            }
-          />
+          <SettingsRow label={t.debug.pickDate} chevron onPress={() => setPicker('debugDate')} />
           <SettingsRow label={t.debug.reset} chevron onPress={resetTime} />
           <SettingsRow label={t.debug.seed} chevron onPress={() => confirm(t.debug.seedConfirm, loadDemo)} />
           <SettingsRow
@@ -397,6 +358,28 @@ export default function ProfileScreen() {
           {t.settings.about(version)}
         </AppText>
       </ScrollView>
+      <PickerSheet
+        visible={picker === 'morning'}
+        mode="time"
+        title={t.settings.morning}
+        value={dateAtTime(today, s.morningTime)}
+        onCancel={() => setPicker(null)}
+        onDone={(d) => {
+          setSetting('morningTime', minutesToTime(d.getHours() * 60 + d.getMinutes()));
+          setPicker(null);
+        }}
+      />
+      <PickerSheet
+        visible={picker === 'debugDate'}
+        mode="date"
+        title={t.debug.pickDate}
+        value={parseLocalDate(today)}
+        onCancel={() => setPicker(null)}
+        onDone={(d) => {
+          timeTravelTo(d);
+          setPicker(null);
+        }}
+      />
       <Fab bottom={insets.bottom + 49 + 16} />
     </View>
   );

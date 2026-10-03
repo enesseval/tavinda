@@ -138,4 +138,20 @@ describe('app smoke test', () => {
     expect(final.kind).toBe('deadline');
     expect(after.instances.some((i) => i.taskId === final.id && i.status === 'active')).toBe(true);
   });
+
+  test('a course on Mon/Wed/Fri at different hours is entered in one go', async () => {
+    seeded();
+    renderRouter('./src/app', { initialUrl: '/' });
+    await screen.findByText('Şimdi sırada');
+    act(() => router.push('/courses/manual'));
+    fireEvent.changeText(await screen.findByPlaceholderText('Ders adı'), 'Elmak Lab');
+    fireEvent.press(screen.getByText('+ Başka bir gün ekle'));
+    fireEvent.press(screen.getByText('+ Başka bir gün ekle'));
+    expect(screen.getByText('3. gün')).toBeTruthy();
+    fireEvent.press(screen.getByText('Dersi ekle'));
+    fireEvent.press(await screen.findByText('Bitti'));
+    const rows = loadAll(getDb()).courses.filter((k) => k.name === 'Elmak Lab');
+    expect(rows.map((k) => k.weekday).sort()).toEqual([1, 3, 5]);
+    expect(new Set(rows.map((k) => k.shortName)).size).toBe(1);
+  });
 });

@@ -187,6 +187,22 @@ export function insertCourse(db: Db, c: NewCourse): number {
   ).lastInsertRowId;
 }
 
+export function updateCourse(db: Db, c: Course): void {
+  db.run(`UPDATE courses SET name = ?, short_name = ?, color = ?, weekday = ?, start_time = ?, end_time = ? WHERE id = ?`, [
+    c.name,
+    c.shortName,
+    c.color,
+    c.weekday,
+    c.startTime,
+    c.endTime,
+    c.id,
+  ]);
+}
+
+export function setCourseShortName(db: Db, id: number, shortName: string): void {
+  db.run('UPDATE courses SET short_name = ? WHERE id = ?', [shortName, id]);
+}
+
 /** Deletes a course together with the weekly tasks bound to it. */
 export function deleteCourse(db: Db, id: number): void {
   db.transaction(() => {

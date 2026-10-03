@@ -4,13 +4,17 @@ import { ScrollView, View } from 'react-native';
 import { AppText } from '../../components/AppText';
 import { Button, Card, Chip } from '../../components/controls';
 import { OnboardingFrame } from '../../components/OnboardingFrame';
-import { t, TEMPLATES, WEEKDAYS_LONG } from '../../i18n/tr';
+import { t, TEMPLATES } from '../../i18n/tr';
+import { slotsLine } from '../../components/courses';
+import { groupCourses } from '../../ui/courseDrafts';
 import { DEFAULT_PICK, useOnboarding } from '../../store/ui';
 
 export default function OnboardingTemplates() {
-  const courses = useOnboarding((s) => s.courses).filter((d) => d.enabled);
+  const enabled = useOnboarding((s) => s.courses).filter((d) => d.enabled);
   const picks = useOnboarding((s) => s.picks);
   const togglePick = useOnboarding((s) => s.togglePick);
+  // One card per course; its weekly tasks follow the course's first day of the week.
+  const courses = groupCourses(enabled).map((g) => ({ ...g.slots[0], slots: g.slots }));
   const count = courses.reduce((a, d) => a + (picks[d.key] ?? DEFAULT_PICK).length, 0);
 
   return (
@@ -37,8 +41,8 @@ export default function OnboardingTemplates() {
                       {d.name}
                     </AppText>
                   </View>
-                  <AppText variant="caption" tone="ink3">
-                    {WEEKDAYS_LONG[d.weekday - 1]} {d.startTime}
+                  <AppText variant="caption" tone="ink3" numberOfLines={1} style={{ flexShrink: 1 }}>
+                    {slotsLine(d.slots)}
                   </AppText>
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

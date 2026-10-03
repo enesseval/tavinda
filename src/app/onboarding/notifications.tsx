@@ -11,7 +11,7 @@ import { finishOnboarding } from '../../services/actions';
 import { requestNotificationPermission } from '../../services/notifications';
 import { DEFAULT_PICK, useOnboarding } from '../../store/ui';
 import { useTheme } from '../../theme/theme';
-import { draftToCourse } from '../../ui/courseDrafts';
+import { draftToCourse, groupCourses } from '../../ui/courseDrafts';
 
 function SampleNotification({ time, body, dim }: { time: string; body: string; dim?: boolean }) {
   const { c } = useTheme();
@@ -73,7 +73,11 @@ export default function OnboardingNotifications() {
     const enabled = drafts.filter((d) => d.enabled);
     const count = finishOnboarding({
       courses: enabled.map(draftToCourse),
-      templates: enabled.map((d) => picks[d.key] ?? DEFAULT_PICK),
+      // Templates belong to a course's first day; its other days carry no extra weekly tasks.
+      templates: enabled.map((d) => {
+        const first = groupCourses(enabled).find((g) => g.slots.includes(d))?.slots[0];
+        return first === d ? (picks[d.key] ?? DEFAULT_PICK) : [];
+      }),
       estimatedMinutes: 45,
     });
     setDone(count);

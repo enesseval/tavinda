@@ -12,7 +12,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { StartupError } from '../boot/BootGuard';
 import { ToastHost } from '../components/Toast';
 import { getDb } from '../db/client';
-import { runReconcile } from '../services/actions';
+import { fixCourseCodes, runReconcile } from '../services/actions';
 import { useNow } from '../services/clock';
 import { onRefresh, useAppData } from '../services/data';
 import { configureNotifications, rescheduleNotifications } from '../services/notifications';
@@ -43,6 +43,7 @@ async function boot(onStep: (step: string) => void): Promise<void> {
       },
     ],
     ['günlük düzenleme', () => runReconcile()],
+    ['ders kodları', () => fixCourseCodes()],
   ];
   for (const [name, run] of steps) {
     onStep(name);

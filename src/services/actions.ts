@@ -7,6 +7,8 @@ import {
   insertCourse,
   insertTask,
   loadAll,
+  setCourseShortName,
+  updateCourse,
   saveDeferTx,
   saveProgressTx,
   setSetting as setSettingRow,
@@ -18,6 +20,7 @@ import {
   type WriteReceipt,
 } from '../db/repo';
 import { seedDemo } from '../db/seed';
+import { dedupeShortNames } from '../ui/courseDrafts';
 import { applyDefer, applyProgress, isReconcileNoop, reconcile, toLocalTimestamp, type SettingKey } from '../domain';
 import type { LocalDate, Settings, Task } from '../domain/types';
 import { getNow, getToday } from './clock';
@@ -158,6 +161,66 @@ export function addCourses(courses: NewCourse[]): number[] {
 
 export function deleteCourse(id: number): void {
   deleteCourseRow(getDb(), id);
+  refresh();
+}
+
+export interface CourseSlotInput {
+  /** Existing course row; omitted for a new day. */
+  id?: number;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * Saves one course with all of its weekly slots. Existing slots keep their id
+ * (and their weekly tasks); slots no longer listed are removed with their tasks.
+ */
+export function saveCourseGroup(input: {
+  existingIds: number[];
+  name: string;
+  shortName: string;
+  color: string;
+  slots: CourseSlotInput[];
+}): void {
+  const db = getDb();
+  const keep = new Set(input.slots.map((s) => s.id).filter((x): x is number => x != null));
+  db.transaction(() => {
+    for (const id of input.existingIds) if (!keep.has(id)) deleteCourseRow(db, id);
+    const rows = loadAll(db).courses;
+    for (const slot of input.slots) {
+      const base = {
+        name: input.name.trim(),
+        shortName: input.shortName.trim(),
+        color: input.color,
+        weekday: slot.weekday,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      };
+      const cur = slot.id != null ? rows.find((r) => r.id === slot.id) : undefined;
+      if (cur) updateCourse(db, { ...cur, ...base });
+      else insertCourse(db, { ...base, source: 'manual', calendarEventId: null });
+    }
+  });
+  runReconcile();
+}
+
+export function deleteCourseGroup(ids: number[]): void {
+  const db = getDb();
+  db.transaction(() => {
+    for (const id of ids) deleteCourseRow(db, id);
+  });
+  refresh();
+}
+
+/** One-off repair: courses with different names must not share a code (older data used 3 letters). */
+export function fixCourseCodes(): void {
+  const db = getDb();
+  const changes = dedupeShortNames(loadAll(db).courses);
+  if (!changes.length) return;
+  db.transaction(() => {
+    for (const ch of changes) setCourseShortName(db, ch.id, ch.shortName);
+  });
   refresh();
 }
 

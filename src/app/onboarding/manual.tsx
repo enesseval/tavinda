@@ -3,10 +3,11 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 
 import { AppText } from '../../components/AppText';
 import { Button, SectionLabel } from '../../components/controls';
-import { DraftList, ManualCourseForm } from '../../components/courses';
+import { CourseForm, DraftList, formToDrafts } from '../../components/courses';
 import { OnboardingFrame } from '../../components/OnboardingFrame';
 import { t } from '../../i18n/tr';
 import { useOnboarding, useUi } from '../../store/ui';
+import { groupCourses } from '../../ui/courseDrafts';
 
 /** Manual weekly grid: used when calendar access is denied or skipped. */
 export default function OnboardingManual() {
@@ -15,7 +16,7 @@ export default function OnboardingManual() {
   const remove = useOnboarding((s) => s.removeCourse);
   const showToast = useUi((s) => s.showToast);
   const manual = courses.filter((d) => d.source === 'manual');
-  const enabled = courses.filter((d) => d.enabled).length;
+  const enabled = groupCourses(courses.filter((d) => d.enabled)).length;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -34,10 +35,16 @@ export default function OnboardingManual() {
             {t.manual.body}
           </AppText>
           <View style={{ marginTop: 20 }}>
-            <ManualCourseForm existing={courses} onAdd={addManual} onError={(m) => showToast(m)} />
+            <CourseForm
+              existing={courses}
+              submitLabel={t.manual.addRow}
+              resetAfterSubmit
+              onError={(m) => showToast(m)}
+              onSubmit={(v) => formToDrafts(v).forEach(addManual)}
+            />
           </View>
           <SectionLabel>{t.manual.added}</SectionLabel>
-          <DraftList drafts={manual} onRemove={remove} />
+          <DraftList drafts={manual} onRemove={(keys) => keys.forEach(remove)} />
         </ScrollView>
       </OnboardingFrame>
     </KeyboardAvoidingView>
