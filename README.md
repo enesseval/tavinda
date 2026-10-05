@@ -64,3 +64,7 @@ src/app      expo-router ekranları
 ```
 
 Kurallar: şema değişikliği = yeni migration dosyası (uygulanmış olanı düzenleme). Gün hesabı yalnızca `LocalDate` ('YYYY-MM-DD') ve cut-off ile yapılır; UTC / `toISOString()` kullanılmaz.
+
+## Google Play (kapalı test)
+
+Android paketi (.aab) GitHub Actions'ta derlenir: Actions › *Android bundle* › *Run workflow*. Upload key secret'ları, Play Console adımları ve mağaza metinleri [docs/PLAY_STORE.md](docs/PLAY_STORE.md) dosyasında.

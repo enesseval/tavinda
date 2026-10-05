@@ -54,7 +54,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: process.env.ANDROID_PACKAGE ?? 'com.tavinda.app',
-    versionCode: Number(BUILD_NUMBER),
+    // Play needs a higher code on every upload; CI passes its run number (.github/workflows/android.yml).
+    versionCode: Number(process.env.ANDROID_VERSION_CODE ?? BUILD_NUMBER),
     adaptiveIcon: {
       backgroundColor: '#1C1B19',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -62,6 +63,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     permissions: ['READ_CALENDAR'],
+    // Added by libraries but never used. WRITE_CALENDAR stays: expo-calendar asks for read and
+    // write together on Android and reports "denied" if either is missing. Nothing is written.
+    blockedPermissions: [
+      'android.permission.SYSTEM_ALERT_WINDOW',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+    ],
   },
   web: { favicon: './assets/favicon.png' },
   plugins: [
@@ -82,6 +90,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     ['expo-calendar', { calendarPermission: CALENDAR_USAGE, remindersPermission: REMINDERS_USAGE }],
     '@react-native-community/datetimepicker',
+    './plugins/withAndroidReleaseSigning',
   ],
   experiments: { typedRoutes: true },
 });
