@@ -5,7 +5,7 @@ import { router, Stack, usePathname, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +16,8 @@ import { fixCourseCodes, runReconcile } from '../services/actions';
 import { useNow } from '../services/clock';
 import { onRefresh, useAppData } from '../services/data';
 import { configureNotifications, listenForNotificationTaps, rescheduleNotifications } from '../services/notifications';
+import { syncLiveActivity } from '../services/liveActivity';
+import { syncWidget } from '../services/widget';
 import { ThemeProvider, useTheme } from '../theme/theme';
 
 /** Fonts are cosmetic; start with system fonts if they take longer than this. */
@@ -40,6 +42,8 @@ async function boot(onStep: (step: string) => void): Promise<void> {
       () => {
         configureNotifications();
         onRefresh(rescheduleNotifications);
+        onRefresh(syncWidget);
+        onRefresh(syncLiveActivity);
       },
     ],
     ['günlük düzenleme', () => runReconcile()],
@@ -80,6 +84,13 @@ function DayWatcher() {
   useEffect(() => {
     runReconcile(today);
   }, [today]);
+  // Back in the foreground: close finished blocks so the widget and Live Activity catch up.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') runReconcile();
+    });
+    return () => sub.remove();
+  }, []);
   return null;
 }
 

@@ -15,6 +15,10 @@ const CALENDAR_USAGE = 'Ders programını takviminden okumak için. Takvimine bi
 // aborts registration of every Expo module after it ("Cannot find native module ...").
 const REMINDERS_USAGE = 'Tavında anımsatıcılarını kullanmaz; bu izin istenmez.';
 
+const BUNDLE_ID = process.env.IOS_BUNDLE_ID ?? 'com.REPLACE.tavinda';
+// Shared container for the home/lock screen widget and the Live Activity (targets/widget).
+export const APP_GROUP = `group.${BUNDLE_ID}`;
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Tavında',
@@ -23,6 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   extra: {
     ...config.extra,
     ...(EXPO_PROJECT_ID ? { eas: { projectId: EXPO_PROJECT_ID } } : {}),
+    appGroup: APP_GROUP,
   },
   scheme: 'tavinda',
   version: VERSION,
@@ -31,11 +36,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: 'automatic',
   locales: { tr: './locales/tr.json' },
   ios: {
-    bundleIdentifier: process.env.IOS_BUNDLE_ID ?? 'com.REPLACE.tavinda',
+    bundleIdentifier: BUNDLE_ID,
     buildNumber: BUILD_NUMBER,
     appleTeamId: process.env.APPLE_TEAM_ID,
     supportsTablet: false,
+    entitlements: { 'com.apple.security.application-groups': [APP_GROUP] },
     infoPlist: {
+      // Time blocks show as a Live Activity (lock screen + Dynamic Island).
+      NSSupportsLiveActivities: true,
       CFBundleDevelopmentRegion: 'tr',
       CFBundleLocalizations: ['tr'],
       NSCalendarsUsageDescription: CALENDAR_USAGE,
@@ -56,6 +64,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   web: { favicon: './assets/favicon.png' },
   plugins: [
+    // Builds the widget extension from targets/widget (home + lock screen widget, Live Activity).
+    '@bacons/apple-targets',
     'expo-router',
     'expo-sqlite',
     'expo-font',

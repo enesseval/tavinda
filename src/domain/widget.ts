@@ -1,4 +1,4 @@
-import { logicalDate, toLocalTimestamp } from './dates';
+import { dueInstant, logicalDate, toLocalTimestamp } from './dates';
 import { compareHottest } from './heat';
 import { buildTodayModel, type TodayItem } from './today';
 import type { AppData, HeatLevel, LocalDate } from './types';
@@ -13,6 +13,9 @@ export interface WidgetTask {
   remainingMinutes: number;
   shareMinutes: number;
   windowEnd: LocalDate;
+  /** When the work is due, local timestamp. */
+  dueAt: string;
+  overdue: boolean;
   locked: boolean;
 }
 
@@ -21,6 +24,8 @@ export interface WidgetSnapshot {
   generatedAt: string;
   logicalDate: LocalDate;
   todayMinutes: number;
+  /** Open work today (incl. overdue). */
+  openCount: number;
   hottest: WidgetTask | null;
   top: WidgetTask[];
 }
@@ -36,6 +41,8 @@ function toWidgetTask(i: TodayItem): WidgetTask {
     remainingMinutes: i.remainingMinutes,
     shareMinutes: i.shareMinutes,
     windowEnd: i.instance.windowEnd,
+    dueAt: toLocalTimestamp(dueInstant(i.instance, i.task)),
+    overdue: i.overdue,
     locked: !i.canDefer,
   };
 }
@@ -56,7 +63,9 @@ export function getWidgetSnapshot(now: Date, data: AppData): WidgetSnapshot {
     generatedAt: toLocalTimestamp(now),
     logicalDate: today,
     todayMinutes: model.loadMinutes,
-    hottest: all[0] ? toWidgetTask(all[0]) : null,
+    openCount: all.length,
+    // Same pick as the Today hero: on-time work first, overdue only when nothing else is open.
+    hottest: model.hero ? toWidgetTask(model.hero) : all[0] ? toWidgetTask(all[0]) : null,
     top: all.slice(0, 3).map(toWidgetTask),
   };
 }

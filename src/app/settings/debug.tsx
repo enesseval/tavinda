@@ -10,13 +10,14 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SettingsGroup, SettingsRow } from '../../components/settings';
 import { parseLocalDate, toLocalDate } from '../../domain/dates';
 import { heatFor, paceForInstance, shareForInstance } from '../../domain/heat';
-import { getWidgetSnapshot } from '../../domain/widget';
 import { fmtLongDay, fmtMinutes } from '../../i18n/format';
 import { HEAT_NAMES, t } from '../../i18n/tr';
 import { loadDemo, resetTime, timeTravelBy, timeTravelTo, wipeEverything } from '../../services/actions';
 import { getNow, useNow } from '../../services/clock';
 import { useAppData } from '../../services/data';
 import { scheduledCount, sendTestNotification } from '../../services/notifications';
+import { liveActivityStatus } from '../../services/liveActivity';
+import { widgetAvailable, widgetPayload } from '../../services/widget';
 import { useOnboarding, useUi } from '../../store/ui';
 import { useTheme } from '../../theme/theme';
 
@@ -91,7 +92,18 @@ export default function DebugScreen() {
           <SettingsRow
             label={t.debug.widget}
             chevron
-            onPress={() => Alert.alert(t.debug.widget, JSON.stringify(getWidgetSnapshot(getNow(), data), null, 2))}
+            onPress={() => Alert.alert(t.debug.widget, JSON.stringify(widgetPayload(data, getNow()), null, 2))}
+          />
+          <SettingsRow label={t.debug.widgetSync} value={widgetAvailable() ? t.debug.available : t.debug.unavailable} />
+          <SettingsRow
+            label={t.debug.liveActivity}
+            value={
+              liveActivityStatus() === 'on'
+                ? t.debug.available
+                : liveActivityStatus() === 'off'
+                  ? t.debug.liveActivityOff
+                  : t.debug.unavailable
+            }
           />
           <SettingsRow
             label={t.debug.wipe}

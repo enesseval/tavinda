@@ -34,7 +34,7 @@ npx expo export -p ios  # üretim bundle'ı
    Ya da `app.config.ts` içindeki `com.REPLACE.tavinda` değerini doğrudan değiştir.
 2. `npm run ios:release` — build numarasını artırır (`app.config.ts` → `BUILD_NUMBER`) ve `ios/` klasörünü sıfırdan üretir (pod install dahil).
 3. `npm run ios:open` — `.xcworkspace`'i Xcode'da açar.
-4. Xcode: Signing & Capabilities → "Automatically manage signing" açık, Team seçili.
+4. Xcode: Signing & Capabilities → "Automatically manage signing" açık, Team seçili. Bunu **iki hedef için de** yap: `Tavnda` (uygulama) ve `TavindaWidget` (widget + Live Activity). App Group (`group.<bundle id>`) her iki hedefte de görünmeli; Xcode ilk imzalamada Apple hesabına kendisi kaydeder.
 5. Üstte hedef olarak **Any iOS Device (arm64)** seç.
 6. **Product › Archive**.
 7. Organizer açılınca **Distribute App › App Store Connect › Upload**.
@@ -42,12 +42,22 @@ npx expo export -p ios  # üretim bundle'ı
 
 Her yeni yükleme için 2. adımdan tekrar başla; build numarası otomatik artar.
 
+## Widget ve Live Activity
+
+- `targets/widget/`: Swift ile yazılmış widget uzantısı (`@bacons/apple-targets` prebuild'de Xcode'a ekler). Ana ekran (küçük, orta) ve kilit ekranı widget'ı + zaman bloğu Live Activity'si (kilit ekranı, Dynamic Island). iOS 16.2+.
+- `modules/tavinda-live-activity/`: uygulamanın Live Activity'yi başlatıp bitirdiği küçük yerel Expo modülü.
+- Veri: uygulama her değişiklikte `src/services/widget.ts` ile App Group'a özet yazar; widget onu okur.
+- `BlockActivityAttributes` iki yerde tanımlı (uygulama modülü ve widget); ikisi birebir aynı kalmalı.
+- Telefonda durum: Profil › Ayarlar › Geliştirici › "Widget bağlantısı" ve "Live Activity".
+
 ## Yapı
 
 ```
 src/domain   saf kurallar (gün sınırı, pencere, ısı, erteleme, reconcile, widget snapshot) — React/Expo yok
 src/db       SQLite: numaralı migration'lar (PRAGMA user_version), repository, demo seed
-src/services eylemler, saat (zaman yolculuğu), bildirimler, takvim okuma
+src/services eylemler, saat (zaman yolculuğu), bildirimler, takvim okuma, widget ve Live Activity köprüsü
+targets      widget uzantısı (Swift)
+modules      yerel native modüller
 src/theme    tokens.ts (tüm tasarım token'ları), tema sağlayıcı
 src/i18n     tr.ts (tüm metinler), tarih biçimleri
 src/app      expo-router ekranları
