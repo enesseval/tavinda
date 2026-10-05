@@ -1,5 +1,5 @@
-import { Redirect, Tabs } from 'expo-router';
-import type { ComponentProps } from 'react';
+import { Redirect, router, Tabs } from 'expo-router';
+import { useEffect, type ComponentProps } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -66,6 +66,13 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
 export default function TabsLayout() {
   const { settings } = useAppData();
   const { c } = useTheme();
+  // First visit after onboarding (or after updating): explain the ideas once.
+  const showIntro = settings.onboarded && !settings.seenIntro;
+  useEffect(() => {
+    if (!showIntro) return;
+    const tm = setTimeout(() => router.push('/intro'), 400);
+    return () => clearTimeout(tm);
+  }, [showIntro]);
   if (!settings.onboarded) return <Redirect href="/onboarding" />;
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.bg } }}>

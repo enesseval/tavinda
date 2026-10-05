@@ -126,6 +126,8 @@ function AppStack() {
         <Stack.Screen name="courses/manual" />
         <Stack.Screen name="courses/import" />
         <Stack.Screen name="settings/index" />
+        <Stack.Screen name="settings/advanced" />
+        <Stack.Screen name="intro" options={{ presentation: 'modal', gestureEnabled: false }} />
         <Stack.Screen name="settings/debug" />
         <Stack.Screen name="settings/calendars" />
         <Stack.Screen name="settings/hours" />

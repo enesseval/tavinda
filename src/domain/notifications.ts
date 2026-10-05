@@ -137,5 +137,19 @@ export function planNotifications(data: AppData, now: Date, horizonDays = 7): Pl
     }
   }
 
-  return out.sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime()).slice(0, MAX_SCHEDULED);
+  const s = data.settings;
+  const enabled: Record<PlannedNotification['kind'], boolean> = {
+    morning: s.notifyMorning,
+    lastDayMorning: s.notifyLastDay,
+    lastDayEvening: s.notifyLastDay,
+    startNow: s.notifyStartNow,
+    // Opt-in per task in the deadline form.
+    lastMinutes: true,
+    classEnd: s.notifyClassEnd && s.freeTimePrompts,
+    blockEnd: s.notifyBlockEnd,
+  };
+  return out
+    .filter((n) => enabled[n.kind])
+    .sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime())
+    .slice(0, MAX_SCHEDULED);
 }

@@ -119,6 +119,16 @@ export interface Settings {
   showWeekend: boolean;
   onboarded: boolean;
   dayHours: DayHours;
+  /** Per-type notification switches. */
+  notifyMorning: boolean;
+  notifyLastDay: boolean;
+  notifyStartNow: boolean;
+  notifyClassEnd: boolean;
+  notifyBlockEnd: boolean;
+  /** "Şu an boşsun" card and class-end prompts. */
+  freeTimePrompts: boolean;
+  /** The "Nasıl çalışır?" explainer was shown once. */
+  seenIntro: boolean;
   /** Debug time travel: milliseconds added to the real clock. */
   timeOffsetMs: number;
 }

@@ -13,7 +13,8 @@ const CALENDAR_USAGE = 'Ders programını takviminden okumak için. Takvimine bi
 // Never requested, but must exist: expo-calendar reads the reminders permission status when
 // its native module is created and raises a fatal exception if this key is missing, which
 // aborts registration of every Expo module after it ("Cannot find native module ...").
-const REMINDERS_USAGE = 'Tavında anımsatıcılarını kullanmaz; bu izin istenmez.';
+// Shown only if the app ever asked for reminders, which it doesn't; worded for App Review.
+const REMINDERS_USAGE = 'Tavında yalnızca takvimindeki ders programını okur. Anımsatıcılarına erişmez.';
 
 const BUNDLE_ID = process.env.IOS_BUNDLE_ID ?? 'com.REPLACE.tavinda';
 // Shared container for the home/lock screen widget and the Live Activity (targets/widget).

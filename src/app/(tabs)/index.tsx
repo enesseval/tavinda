@@ -71,7 +71,7 @@ export default function TodayScreen() {
     if (ended) return { kind: 'ended' as const, block: ended };
     const running = runningBlock(data.blocks, now);
     if (running) return { kind: 'running' as const, block: running };
-    const gap = data.settings.onboarded ? currentGap(data, now) : null;
+    const gap = data.settings.onboarded && data.settings.freeTimePrompts ? currentGap(data, now) : null;
     return gap ? { kind: 'gap' as const, gap } : null;
     // `now` ticks every 30 s; that is enough for the card.
   }, [data, now]);

@@ -29,6 +29,7 @@ const DEMO_COURSES = [
 export function seedDemo(db: Db, today: LocalDate): void {
   wipeAll(db);
   setSetting(db, 'onboarded', true);
+  setSetting(db, 'seenIntro', true);
   const past = (n: number) => `${addDays(today, -n)}T09:00:00`;
 
   const courseIds = DEMO_COURSES.map((c, i) =>

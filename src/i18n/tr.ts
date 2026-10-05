@@ -351,6 +351,17 @@ export const t = {
   settings: {
     title: 'Ayarlar',
     groupDay: 'Gün',
+    groupProgram: 'Programın',
+    groupFreeTime: 'Boş zaman',
+    freeTime: 'Boş zaman soruları',
+    freeTimeFoot:
+      'Açıkken boş kaldığın saatlerde “Ne yapacaksın?” diye sorarız. Kapalıyken zaman çizelgesi yine görünür; istediğinde boşluğa dokunup planlarsın.',
+    advanced: 'Gelişmiş',
+    morningTime: 'Sabah özeti saati',
+    notifLastDay: 'Son gün hatırlatmaları',
+    notifStartNow: 'Teslime yaklaşınca “Artık başla”',
+    notifBlockEnd: 'Blok bitince sor',
+    notifClassEnd: 'Ders bitince “Sırada ne var?”',
     cutoff: 'Günün bittiği saat',
     cutoffFoot: (time: string) => `${time}'dan önce yaptığın iş bir önceki güne sayılır.`,
     groupCalendar: 'Takvim ve kaynaklar',
@@ -376,7 +387,7 @@ export const t = {
     notifPermission: 'Bildirim izni',
     notifOn: 'Açık',
     notifOff: 'Kapalı · aç',
-    notifFoot: 'Sabah 1 özet, son günde sabah ve 20:00’de 1 hatırlatma.',
+    notifFoot: 'Her birini ayrı kapatabilirsin. Teslimden hemen önceki son dakika alarmı her işin kendi ayarındadır.',
     groupAppearance: 'Görünüm',
     theme: 'Tema',
     themeSystem: 'Sistem',
@@ -384,6 +395,61 @@ export const t = {
     themeDark: 'Koyu',
     about: (version: string) => `Tavında ${version} · Takvimine bir şey yazmayız.`,
     done: 'Bitti',
+  },
+
+  intro: {
+    row: 'Nasıl çalışır?',
+    skip: 'Geç',
+    next: 'Devam',
+    done: 'Anladım',
+    heat: [
+      'Bolca zaman var, acele yok.',
+      'Başlamak için iyi bir an.',
+      'Bugün biraz ilerlet.',
+      'Geride kaldın; günlük pay sığmıyor.',
+      'Bugün bitmeli; erteleme kapalı.',
+    ],
+    pages: [
+      {
+        title: 'İş yaklaştıkça ısınır.',
+        body: 'Her görevin bir ısısı var. Renge bakınca neyin acil olduğunu düşünmeden görürsün.',
+      },
+      {
+        title: 'Haftalık iş dersten sonra açılır.',
+        body: 'Derse bağlı işler ders günü açılır, bir sonraki dersten önceki gün biter; yeni hafta yine serin başlar. Bitmeyen iş “Gecikti” olarak 7 gün listede kalır.',
+      },
+      {
+        title: 'Her gün biraz, son gün yığılmadan.',
+        body: 'Kalan iş günlere bölünür: küçük işler tek oturumda, büyükler en az 30 dakikalık parçalarla. Bugün payını yapınca “Bugünlük tamam” yazar. Ertelemek serbest, son gün hariç.',
+      },
+      {
+        title: 'Boş zamanın da görünsün.',
+        body: 'Ders bitip boş kaldığında ne yapacağını sorarız; seçtiğin iş kilit ekranında geri sayar. Sorulmasın istersen Ayarlar › Boş zaman’dan kapatabilirsin.',
+      },
+    ],
+  },
+
+  data: {
+    group: 'Verilerin',
+    export: 'Dışa aktar',
+    import: 'İçe aktar',
+    foot: 'Verilerin yalnızca bu telefonda. iCloud yedeğin açıksa yeni telefona kendiliğinden taşınır. Elle yedek için dışa aktar; dosyayı Dosyalar’a, Drive’a ya da kendine gönder.',
+    shareUnavailable: 'Bu cihazda paylaşım açılamadı.',
+    exportFailed: 'Yedek dosyası oluşturulamadı.',
+    importTitle: 'Yedek yüklensin mi?',
+    importBody: (courses: number, tasks: number, date: string) =>
+      `${date ? `${date} tarihli yedek` : 'Yedek'}: ${courses} ders, ${tasks} görev. Bu telefondaki tüm veriler bununla değiştirilecek.`,
+    importConfirm: 'Yükle',
+    wipe: 'Tüm verileri sil',
+    wipeTitle: 'Her şey silinsin mi?',
+    wipeBody:
+      'Dersler, görevler ve tüm geçmiş bu telefondan silinir ve kurulum baştan başlar. Önce dışa aktarmak isteyebilirsin.',
+    imported: 'Yedek yüklendi.',
+    errors: {
+      invalid: 'Bu dosya okunamadı. Tavında’dan dışa aktarılmış bir .json dosyası seç.',
+      otherApp: 'Bu dosya bir Tavında yedeği değil.',
+      newer: 'Bu yedek daha yeni bir Tavında sürümünden. Önce uygulamayı güncelle.',
+    },
   },
 
   calendarsScreen: {

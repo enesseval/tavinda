@@ -95,3 +95,20 @@ describe('block notifications', () => {
     expect(classEnd[0].fireAt.getTime()).toBe(new Date(2026, 8, 30, 14, 50).getTime());
   });
 });
+
+describe('notification switches', () => {
+  test('each type can be turned off; free-time prompts off also silences class endings', () => {
+    const now = new Date(2026, 8, 30, 9, 0);
+    const base = appData({
+      courses: [course()],
+      blocks: [block({ startAt: '2026-09-30T08:30:00', endAt: '2026-09-30T10:00:00' })],
+      settings: { ...settings, dayHours: DEFAULT_DAY_HOURS },
+    });
+    const kinds = (s: Partial<typeof settings>) =>
+      new Set(planNotifications({ ...base, settings: { ...base.settings, ...s } }, now, 1).map((p) => p.kind));
+    expect(kinds({})).toEqual(new Set(['blockEnd', 'classEnd']));
+    expect(kinds({ notifyBlockEnd: false }).has('blockEnd')).toBe(false);
+    expect(kinds({ notifyClassEnd: false }).has('classEnd')).toBe(false);
+    expect(kinds({ freeTimePrompts: false }).has('classEnd')).toBe(false);
+  });
+});

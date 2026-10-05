@@ -18,6 +18,13 @@ export const DEFAULT_SETTINGS: Settings = {
   showWeekend: false,
   onboarded: false,
   dayHours: DEFAULT_DAY_HOURS,
+  notifyMorning: true,
+  notifyLastDay: true,
+  notifyStartNow: true,
+  notifyClassEnd: true,
+  notifyBlockEnd: true,
+  freeTimePrompts: true,
+  seenIntro: false,
   timeOffsetMs: 0,
 };
 
@@ -75,6 +82,13 @@ export function parseSettings(rows: { key: string; value: string }[]): Settings 
     showWeekend: raw.showWeekend === '1',
     onboarded: raw.onboarded === '1',
     dayHours: parseDayHours(raw.dayHours),
+    notifyMorning: raw.notifyMorning !== '0',
+    notifyLastDay: raw.notifyLastDay !== '0',
+    notifyStartNow: raw.notifyStartNow !== '0',
+    notifyClassEnd: raw.notifyClassEnd !== '0',
+    notifyBlockEnd: raw.notifyBlockEnd !== '0',
+    freeTimePrompts: raw.freeTimePrompts !== '0',
+    seenIntro: raw.seenIntro === '1',
     timeOffsetMs: toInt(raw.timeOffsetMs, 0, -1e13, 1e13),
   };
 }

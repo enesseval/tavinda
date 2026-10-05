@@ -78,7 +78,9 @@ describe('app smoke test', () => {
     await visit('/block/new', 'Ne yapacaksın?');
     await visit('/settings/hours', 'Her gün aynı');
     await visit('/profile', 'Dönem özeti');
-    await visit('/settings', 'Günün bittiği saat');
+    await visit('/settings', 'Dışa aktar');
+    await visit('/settings/advanced', 'Günün bittiği saat');
+    await visit('/intro', 'İş yaklaştıkça ısınır.');
     await visit('/settings/debug', 'Demo dönem yükle');
     await visit('/add', 'Ne ekliyoruz?');
     fireEvent.press(screen.getByText('Teslim tarihli iş'));
@@ -186,5 +188,15 @@ describe('app smoke test', () => {
     act(() => router.push({ pathname: '/block/[id]', params: { id: String(taskBlock.id) } }));
     fireEvent.press(await screen.findByText('Kaydet'));
     expect(loadAll(getDb()).blocks.find((b) => b.id === taskBlock.id)!.status).toBe('done');
+  });
+
+  test('the explainer opens once after onboarding and not again once closed', async () => {
+    seeded();
+    setSetting(getDb(), 'seenIntro', false);
+    refresh();
+    renderRouter('./src/app', { initialUrl: '/' });
+    expect(await screen.findByText('İş yaklaştıkça ısınır.', {}, { timeout: 3000 })).toBeTruthy();
+    fireEvent.press(screen.getByText('Geç'));
+    expect(loadAll(getDb()).settings.seenIntro).toBe(true);
   });
 });
