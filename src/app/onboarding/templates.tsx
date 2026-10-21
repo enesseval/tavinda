@@ -20,7 +20,7 @@ export default function OnboardingTemplates() {
   return (
     <OnboardingFrame
       step={4}
-      footer={<Button label={t.onboarding.tplContinue(count)} onPress={() => router.push('/onboarding/notifications')} />}
+      footer={<Button label={t.onboarding.tplContinue(count)} onPress={() => router.push('/onboarding/hours')} />}
     >
       <ScrollView contentContainerStyle={{ paddingTop: 12, paddingHorizontal: 20, paddingBottom: 24 }}>
         <AppText variant="display" accessibilityRole="header">

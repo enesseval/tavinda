@@ -25,6 +25,7 @@ export const t = {
     undo: 'Geri al',
     none: 'Yok',
     later: 'Sonra',
+    continue: 'Devam',
     addTask: 'Görev ekle',
   },
 
@@ -300,8 +301,11 @@ export const t = {
     modes: { all: '24 saat', same: 'Her gün aynı', perDay: 'Güne göre' },
     start: 'Başlangıç',
     end: 'Bitiş',
-    foot: 'Boş kalan zamanı yalnızca bu saatler içinde sorarız. Bitiş başlangıçtan önceyse gece yarısına kadar sayılır.',
-    allFoot: 'Gün boyu, her boşlukta sorarız.',
+    foot: 'Boş kalan zamanı yalnızca bu saatler içinde sorarız; takvim de bu saatleri gösterir. Bitiş başlangıçtan önceyse gece yarısına kadar sayılır.',
+    allFoot: 'Gün boyu, her boşlukta sorarız; takvim 24 saati gösterir.',
+    onbTitle: 'Günün kaç saat?',
+    onbBody:
+      'Ders bitip boş kaldığında ne yapacağını bu saatler içinde sorarız. İstersen 24 saat, istersen her gün için ayrı saat seç. Sonra Ayarlar’dan değiştirebilirsin.',
     value: (mode: 'all' | 'same' | 'perDay', start: string, end: string) =>
       mode === 'all' ? '24 saat' : mode === 'same' ? `${start}–${end}` : 'Güne göre',
   },

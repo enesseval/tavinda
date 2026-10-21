@@ -55,6 +55,11 @@ describe('app smoke test', () => {
     expect(await screen.findByText('Dersi ekle')).toBeTruthy();
     act(() => router.push('/onboarding/templates'));
     expect(await screen.findByText('İlk görevler')).toBeTruthy();
+    act(() => router.push('/onboarding/hours'));
+    expect(await screen.findByText('Günün kaç saat?')).toBeTruthy();
+    fireEvent.press(screen.getByText('Güne göre'));
+    expect(await screen.findByText('Pazar')).toBeTruthy();
+    expect(loadAll(getDb()).settings.dayHours.mode).toBe('perDay');
     act(() => router.push('/onboarding/notifications'));
     expect(await screen.findByText('Bildirimlere izin ver')).toBeTruthy();
   });

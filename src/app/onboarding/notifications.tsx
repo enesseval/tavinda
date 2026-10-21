@@ -87,7 +87,7 @@ export default function OnboardingNotifications() {
   return (
     <View style={{ flex: 1 }}>
       <OnboardingFrame
-        step={5}
+        step={6}
         footer={
           <View style={{ gap: 4 }}>
             <Button label={t.onboarding.notifAllow} onPress={() => finish(true)} disabled={busy} />

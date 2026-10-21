@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { addDays, isoWeekday, startOfIsoWeek, timeToMinutes } from '../domain/dates';
 import { dayPlan, windowRows, type WindowSegment } from '../domain/projection';
-import { blocksOn } from '../domain/schedule';
+import { activeWindow, blocksOn } from '../domain/schedule';
 import { blockName, clockOf } from '../ui/blockText';
 import type { AppData, HeatLevel, LocalDate } from '../domain/types';
 import {
@@ -98,15 +98,20 @@ export function WeekView({
   const classes = data.courses.filter((k) => days.some((d) => isoWeekday(d) === k.weekday));
   const dayBlocks = useMemo(() => days.map((d) => blocksOn(data.blocks, d)), [data.blocks, days]);
   const flatBlocks = dayBlocks.flat();
+  // The user's day hours (Ayarlar › Günlük program), widened to fit classes and blocks.
+  const windows = days.map((d) => activeWindow(d, data.settings.dayHours));
   const startH = Math.min(
-    8,
+    ...windows.map((w) => Math.floor(w.start / 60)),
     ...classes.map((k) => Math.floor(timeToMinutes(k.startTime) / 60)),
     ...flatBlocks.map((b) => Math.floor(b.start / 60)),
   );
-  const endH = Math.max(
-    19,
-    ...classes.map((k) => Math.ceil(timeToMinutes(k.endTime) / 60)),
-    ...flatBlocks.map((b) => Math.ceil(b.end / 60)),
+  const endH = Math.min(
+    24,
+    Math.max(
+      ...windows.map((w) => Math.ceil(w.end / 60)),
+      ...classes.map((k) => Math.ceil(timeToMinutes(k.endTime) / 60)),
+      ...flatBlocks.map((b) => Math.ceil(b.end / 60)),
+    ),
   );
   const Y = (m: number) => ((m - startH * 60) / 60) * HOUR_PX;
   const todayCol = days.indexOf(today);
