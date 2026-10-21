@@ -12,7 +12,7 @@ import { instanceHistory } from '../../domain/projection';
 import { makeItem } from '../../domain/today';
 import { fmtHoursClock, fmtLongDay, fmtMinutes, fmtRange, fmtRelativeDay } from '../../i18n/format';
 import { t } from '../../i18n/tr';
-import { deleteTask } from '../../services/actions';
+import { deleteTask, setTaskPaused } from '../../services/actions';
 import { useNow } from '../../services/clock';
 import { useAppData } from '../../services/data';
 import { useUi } from '../../store/ui';
@@ -128,6 +128,11 @@ export default function TaskDetail() {
           <AppText variant="sheetTitle" accessibilityRole="header">
             {task.title}
           </AppText>
+          {task.pausedAt ? (
+            <AppText variant="footnote" tone="ink2" style={{ lineHeight: 19 }}>
+              {t.detail.pausedNote}
+            </AppText>
+          ) : null}
         </View>
 
         <Card style={{ marginTop: 20, marginHorizontal: 20, padding: 18, gap: 16 }} border={active ? heatBorder(c, lvl) : c.line}>
@@ -311,6 +316,21 @@ export default function TaskDetail() {
         ) : null}
 
         <Card style={{ marginTop: 28, marginHorizontal: 20, borderRadius: radii.input }}>
+          <Button
+            label={task.pausedAt ? t.tasks.resume : t.detail.pause}
+            kind="ghost"
+            small
+            onPress={() => {
+              setTaskPaused(task, !task.pausedAt);
+              showToast(task.pausedAt ? t.tasks.resumed(task.title) : t.tasks.paused(task.title));
+            }}
+          />
+        </Card>
+        <AppText variant="footnote" tone="ink3" style={{ marginTop: 8, marginHorizontal: 32, lineHeight: 18 }}>
+          {t.detail.pauseFoot}
+        </AppText>
+
+        <Card style={{ marginTop: 20, marginHorizontal: 20, borderRadius: radii.input }}>
           <Button label={t.detail.delete} kind="destructive" small onPress={confirmDelete} />
         </Card>
       </ScrollView>

@@ -42,6 +42,10 @@ export interface Task {
   /** Local timestamp 'YYYY-MM-DDTHH:mm:ss'. */
   createdAt: string;
   archivedAt: string | null;
+  /** Local timestamp; while set the task is ignored (Bugün, takvim, bildirimler, widget). */
+  pausedAt: string | null;
+  /** Position on the Görevler tab; null = ordered by heat, ahead of ordered ones. */
+  sortOrder: number | null;
 }
 
 export interface TaskInstance {

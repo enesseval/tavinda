@@ -17,6 +17,9 @@ import {
   setSetting as setSettingRow,
   undoWrite,
   updateTaskRow,
+  setTaskPausedAt,
+  setTaskOrder,
+  clearTaskOrder,
   wipeAll,
   writeInstance,
   type NewCourse,
@@ -230,6 +233,39 @@ export function updateTask(task: Task, patch: Partial<Omit<Task, 'id' | 'kind' |
 
 export function deleteTask(id: number): void {
   deleteTaskRow(getDb(), id);
+  refresh();
+}
+
+/**
+ * Pause: the task drops out of Bugün, the calendar, notifications and the widget.
+ * Resume, weekly: windows that ended while it was paused and were never started are
+ * dropped (that week was ignored on purpose), then the current window opens.
+ */
+export function setTaskPaused(task: Task, paused: boolean): void {
+  const db = getDb();
+  const today = getToday();
+  db.transaction(() => {
+    setTaskPausedAt(db, task.id, paused ? createdStamp() : null);
+    if (!paused && task.kind === 'weekly') {
+      for (const i of loadAll(db).instances) {
+        if (i.taskId === task.id && i.status === 'active' && i.progress === 0 && i.windowEnd < today) {
+          db.run('DELETE FROM task_instances WHERE id = ?', [i.id]);
+        }
+      }
+    }
+  });
+  runReconcile(today);
+}
+
+/** The user's order on the Görevler tab (task ids, top first). */
+export function reorderTasks(ids: number[]): void {
+  setTaskOrder(getDb(), ids);
+  refresh();
+}
+
+/** Back to ordering by heat. */
+export function resetTaskOrder(): void {
+  clearTaskOrder(getDb());
   refresh();
 }
 

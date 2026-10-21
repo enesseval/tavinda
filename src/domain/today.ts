@@ -10,6 +10,7 @@ import {
   shareForInstance,
 } from './heat';
 import { OVERDUE_DAYS } from './reconcile';
+import { isLive } from './taskState';
 import type { AppData, Course, HeatLevel, LocalDate, Task, TaskInstance } from './types';
 
 /** Deadline tasks further out than this live only in the long-term strip. */
@@ -101,7 +102,7 @@ export function coursesOn(courses: Course[], day: LocalDate): Course[] {
 }
 
 export function buildTodayModel(data: AppData, today: LocalDate): TodayModel {
-  const taskById = new Map(data.tasks.filter((t) => !t.archivedAt).map((t) => [t.id, t]));
+  const taskById = new Map(data.tasks.filter(isLive).map((t) => [t.id, t]));
   const courseById = new Map(data.courses.map((c) => [c.id, c]));
   const yesterday = addDays(today, -1);
 

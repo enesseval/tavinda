@@ -1,4 +1,5 @@
 import { diffDays } from './dates';
+import { isLive } from './taskState';
 import type { Course, LocalDate, NewInstance, Task, TaskInstance } from './types';
 import { currentWeeklyWindow } from './windows';
 
@@ -33,6 +34,8 @@ export function isReconcileNoop(r: ReconcileResult): boolean {
  * 2. active instances scheduled before today → carried to today (not a user defer)
  * 3. weekly tasks get an instance for the window containing today
  * 4. deadline tasks get their single instance
+ * Paused tasks get no new instances (their open ones still age as above), so a
+ * week spent paused never opens and resuming starts from the current window.
  * Pure and idempotent: applying the result and running again yields no changes.
  */
 export function reconcile({ today, courses, tasks, instances }: ReconcileInput): ReconcileResult {
@@ -57,7 +60,7 @@ export function reconcile({ today, courses, tasks, instances }: ReconcileInput):
   const courseById = new Map(courses.map((c) => [c.id, c]));
 
   for (const task of tasks) {
-    if (task.archivedAt) continue;
+    if (!isLive(task)) continue;
     const existing = byTask.get(task.id) ?? [];
 
     if (task.kind === 'weekly') {

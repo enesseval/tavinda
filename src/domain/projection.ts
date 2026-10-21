@@ -1,6 +1,7 @@
 import { addDays, diffDays, maxDate, minDate } from './dates';
 import { heatFor, minutesDoneOn, remainingMinutes, shareForInstance, weeklyBaseHeat } from './heat';
 import { applyReconcile, reconcile } from './reconcile';
+import { isLive } from './taskState';
 import { coursesOn, isLongTerm } from './today';
 import type { AppData, Course, HeatLevel, LocalDate, Task, TaskInstance } from './types';
 import { currentWeeklyWindow } from './windows';
@@ -60,7 +61,9 @@ function logMinutesByInstance(data: AppData, day: LocalDate): Map<number, { pct:
 }
 
 export function dayPlan(data: AppData, today: LocalDate, day: LocalDate): DayPlan {
-  const tasks = new Map(data.tasks.filter((t) => !t.archivedAt).map((t) => [t.id, t]));
+  // Past days are history (what was done, paused since or not); today on is the plan.
+  const counts = (t: Task) => (day < today ? !t.archivedAt : isLive(t));
+  const tasks = new Map(data.tasks.filter(counts).map((t) => [t.id, t]));
   const courses = new Map(data.courses.map((c) => [c.id, c]));
   const shares: DayShare[] = [];
 
@@ -103,7 +106,7 @@ export function dayPlan(data: AppData, today: LocalDate, day: LocalDate): DayPla
 
   shares.sort((a, b) => b.heat - a.heat || b.minutes - a.minutes);
   const dues = data.tasks
-    .filter((t) => !t.archivedAt && t.kind === 'deadline' && t.dueAt === day)
+    .filter((t) => counts(t) && t.kind === 'deadline' && t.dueAt === day)
     .map((t) => ({ task: t, course: t.courseId != null ? (courses.get(t.courseId) ?? null) : null }));
 
   return {
@@ -158,7 +161,7 @@ export function windowRows(data: AppData, today: LocalDate, days: LocalDate[]): 
   if (!days.length) return [];
   const first = days[0];
   const last = days[days.length - 1];
-  const tasks = new Map(data.tasks.filter((t) => !t.archivedAt).map((t) => [t.id, t]));
+  const tasks = new Map(data.tasks.filter(isLive).map((t) => [t.id, t]));
   const courses = new Map(data.courses.map((c) => [c.id, c]));
   const pool = projectRange(data, today, days);
   const rows = new Map<number, WindowRow>();

@@ -9,6 +9,7 @@ import { TaskCard } from '../../components/TaskCard';
 import { CalmCard, DayTimeline, HeroCard, LongTermCard, NoCalendarBanner, NowCard, SetupCard } from '../../components/today';
 import { minutesToTime, toLocalDate } from '../../domain/dates';
 import { currentGap, dayTimeline, endedBlocks, runningBlock } from '../../domain/schedule';
+import { isPaused } from '../../domain/taskState';
 import { buildTodayModel, type TodayGroupKey, type TodayItem } from '../../domain/today';
 import { blockName, clockOf } from '../../ui/blockText';
 import { fmtLongDay, fmtMinutes } from '../../i18n/format';
@@ -37,6 +38,7 @@ type Row =
   | { type: 'card'; key: string; item: TodayItem }
   | { type: 'longHeader'; key: string }
   | { type: 'long'; key: string; items: TodayItem[] }
+  | { type: 'paused'; key: string; count: number }
   | { type: 'footer'; key: string };
 
 const UPCOMING_VISIBLE = 3;
@@ -76,6 +78,7 @@ export default function TodayScreen() {
     // `now` ticks every 30 s; that is enough for the card.
   }, [data, now]);
 
+  const pausedCount = useMemo(() => data.tasks.filter((x) => !x.archivedAt && isPaused(x)).length, [data.tasks]);
   const rows = useMemo<Row[]>(() => {
     const r: Row[] = [{ type: 'header', key: 'header' }];
     if (calDenied) r.push({ type: 'banner', key: 'banner' });
@@ -96,9 +99,10 @@ export default function TodayScreen() {
     if (model.longTerm.length) {
       r.push({ type: 'longHeader', key: 'longHeader' }, { type: 'long', key: 'long', items: model.longTerm });
     }
+    if (pausedCount) r.push({ type: 'paused', key: 'paused', count: pausedCount });
     r.push({ type: 'footer', key: 'footer' });
     return r;
-  }, [model, calDenied, expanded, data.tasks.length, nowState]);
+  }, [model, calDenied, expanded, data.tasks.length, nowState, pausedCount]);
 
   const screenBg = model.maxHeat === 4 ? mix(c.heat[4], c.bg, 0.04) : model.maxHeat === 3 ? mix(c.heat[3], c.bg, 0.03) : c.bg;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -306,6 +310,19 @@ export default function TodayScreen() {
               <LongTermCard key={i.instance.id} item={i} onPress={() => actions.openProgress(i.instance.id)} />
             ))}
           </ScrollView>
+        );
+      case 'paused':
+        // A quiet reminder, so a task paused for exam week isn't forgotten.
+        return (
+          <Touchable
+            accessibilityRole="link"
+            onPress={() => router.push('/tasks')}
+            style={{ alignSelf: 'center', marginTop: 20, paddingVertical: 8, paddingHorizontal: 12 }}
+          >
+            <AppText variant="footnote" tone="ink3" center>
+              {t.today.pausedHint(row.count)}
+            </AppText>
+          </Touchable>
         );
       case 'footer':
         return <View style={{ height: 150 }} />;

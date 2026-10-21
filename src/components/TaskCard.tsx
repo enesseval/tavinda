@@ -44,6 +44,8 @@ interface Props {
   onTap?: () => void;
   onComplete?: () => void;
   onDefer?: () => void;
+  /** Held without moving (Görevler: opens edit mode). */
+  onLongPress?: () => void;
 }
 
 const THRESHOLD = 80;
@@ -74,7 +76,7 @@ function Pulse({ color }: { color: string }) {
 
 export { Pulse as HeatPulse };
 
-function TaskCardImpl({ task, onTap, onComplete, onDefer }: Props) {
+function TaskCardImpl({ task, onTap, onComplete, onDefer, onLongPress }: Props) {
   const { c } = useTheme();
   const off = !!(task.done || task.missed);
   const lvl = task.heat;
@@ -96,6 +98,10 @@ function TaskCardImpl({ task, onTap, onComplete, onDefer }: Props) {
   const complete = () => onComplete?.();
   const defer = () => onDefer?.();
   const tap = () => onTap?.();
+  const longPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    onLongPress?.();
+  };
 
   const pan = Gesture.Pan()
     .enabled(interactive)
@@ -128,7 +134,15 @@ function TaskCardImpl({ task, onTap, onComplete, onDefer }: Props) {
       if (success) scheduleOnRN(tap);
     });
 
-  const gesture = Gesture.Race(pan, tapGesture);
+  // Longer than the tap's maxDuration, so a held finger never also counts as a tap.
+  const holdGesture = Gesture.LongPress()
+    .enabled(!!onLongPress)
+    .minDuration(450)
+    .onStart(() => {
+      scheduleOnRN(longPress);
+    });
+
+  const gesture = Gesture.Race(pan, holdGesture, tapGesture);
 
   const frontStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dx.value }] }));
   const leftStyle = useAnimatedStyle(() => ({ opacity: dx.value > 0 ? 1 : 0 }));
@@ -154,6 +168,7 @@ function TaskCardImpl({ task, onTap, onComplete, onDefer }: Props) {
   const actions = [
     ...(onComplete && !off ? [{ name: 'complete', label: t.card.done }] : []),
     ...(onDefer && !off ? [{ name: 'defer', label: locked ? t.card.locked : t.card.defer }] : []),
+    ...(onLongPress ? [{ name: 'edit', label: t.a11y.edit }] : []),
   ];
 
   return (
@@ -188,6 +203,7 @@ function TaskCardImpl({ task, onTap, onComplete, onDefer }: Props) {
           onAccessibilityAction={(e) => {
             if (e.nativeEvent.actionName === 'complete') onComplete?.();
             if (e.nativeEvent.actionName === 'defer') onDefer?.();
+            if (e.nativeEvent.actionName === 'edit') onLongPress?.();
             if (e.nativeEvent.actionName === 'activate') onTap?.();
           }}
           style={[

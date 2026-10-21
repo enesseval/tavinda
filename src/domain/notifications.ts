@@ -2,6 +2,7 @@ import { addDays, dueInstant, logicalDate, logicalDateTime } from './dates';
 import { warnDaysFor } from './heat';
 import { classEndsWithGap, parseTimestamp } from './schedule';
 import { applyReconcile, reconcile } from './reconcile';
+import { isLive } from './taskState';
 import { buildTodayModel } from './today';
 import type { AppData, LocalDate } from './types';
 
@@ -99,7 +100,7 @@ export function planNotifications(data: AppData, now: Date, horizonDays = 7): Pl
 
   // Deadline tasks: "start now" on the warn day, and the optional last-minutes alarm.
   for (const task of data.tasks) {
-    if (task.kind !== 'deadline' || task.archivedAt) continue;
+    if (task.kind !== 'deadline' || !isLive(task)) continue;
     const inst = data.instances.find((i) => i.taskId === task.id && i.status === 'active');
     if (!inst) continue;
     const warn = warnDaysFor(task, data.settings);

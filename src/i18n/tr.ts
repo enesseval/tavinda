@@ -29,6 +29,7 @@ export const t = {
   },
 
   today: {
+    pausedHint: (n: number) => `${n} görev duraklatıldı · Görevler’de aç`,
     title: 'Bugün',
     calm: 'Sakin',
     load: (time: string, n: number) => `Bugün ${time} iş · ${n} görev`,
@@ -206,6 +207,9 @@ export const t = {
     statusActive: 'Açık',
     delete: 'Görevi sil',
     deleteTitle: 'Görev silinsin mi?',
+    pause: 'Bir süre duraklat',
+    pausedNote: 'Duraklatıldı. Bugün’de, takvimde ve bildirimlerde görünmüyor.',
+    pauseFoot: 'Vize haftası gibi dönemlerde görevi silmeden kenara koy. Görevler sekmesinde basılı tutarak da yapabilirsin.',
     deleteBody: 'Tüm ilerleme ve geçmiş de silinir.',
     notFound: 'Bu görev artık yok.',
   },
@@ -221,6 +225,24 @@ export const t = {
       recurring: 'Haftalık görev yok. Bir derse bağlı iş ekleyebilirsin.',
       done: 'Henüz biten görev yok.',
     },
+    // Edit mode: long press a card, like the iPhone home screen.
+    edit: 'Düzenle',
+    editDone: 'Bitti',
+    editHint:
+      'Sürükleyerek sırala. Tikini kaldırdığın görev, tekrar işaretleyene kadar Bugün’de, takvimde ve bildirimlerde görünmez.',
+    resetOrder: 'Isıya göre sırala',
+    orderReset: 'Sıralama ısıya döndü.',
+    rowWeekly: (day: string | null) => (day ? `Her hafta · ${day}` : 'Her hafta'),
+    rowDeadline: (when: string) => `Teslim ${when}`,
+    rowPaused: 'Duraklatıldı',
+    dragA11y: 'Sürükle',
+    include: (title: string) => `${title}, planda`,
+    exclude: (title: string) => `${title}, duraklatıldı`,
+    pausedHeader: (n: number) => `Duraklatılanlar · ${n}`,
+    pausedSub: 'Bugün’de, takvimde ve bildirimlerde görünmüyor',
+    resume: 'Devam ettir',
+    paused: (title: string) => `“${title}” duraklatıldı.`,
+    resumed: (title: string) => `“${title}” yeniden planda.`,
   },
 
   blocks: {
@@ -581,6 +603,7 @@ export const t = {
     increase: 'Artır',
     longTerm: (title: string, days: number, pct: number) => `${title}, ${days} gün, %${pct}`,
     swipeDone: 'Bitti',
+    edit: 'Düzenle',
   },
 
   permissions: {

@@ -110,6 +110,24 @@ describe('app smoke test', () => {
     expect(after.status).toBe('done');
   });
 
+  test('Görevler edit mode pauses a task and resumes it', async () => {
+    seeded();
+    renderRouter('./src/app', { initialUrl: '/tasks' });
+    fireEvent.press(await screen.findByText('Düzenle'));
+    expect(await screen.findByText(/Sürükleyerek sırala/)).toBeTruthy();
+
+    const boxes = screen.getAllByRole('checkbox');
+    expect(boxes.length).toBeGreaterThan(0);
+    fireEvent.press(boxes[0]);
+    const paused = loadAll(getDb()).tasks.filter((t) => t.pausedAt);
+    expect(paused).toHaveLength(1);
+
+    fireEvent.press(screen.getByText('Bitti'));
+    expect(await screen.findByText('Duraklatılanlar · 1')).toBeTruthy();
+    fireEvent.press(screen.getByText('Devam ettir'));
+    expect(loadAll(getDb()).tasks.every((t) => !t.pausedAt)).toBe(true);
+  });
+
   test('calendar month and deadline views render', async () => {
     seeded();
     setSetting(getDb(), 'showWeekend', true);

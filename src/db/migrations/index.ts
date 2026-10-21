@@ -1,6 +1,7 @@
 import * as m001 from './001_init';
 import * as m002 from './002_defer_logs';
 import * as m003 from './003_blocks_due_time';
+import * as m004 from './004_task_pause_order';
 
 export interface Migration {
   version: number;
@@ -8,6 +9,6 @@ export interface Migration {
 }
 
 /** Ordered list. Append only. */
-export const MIGRATIONS: Migration[] = [m001, m002, m003];
+export const MIGRATIONS: Migration[] = [m001, m002, m003, m004];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

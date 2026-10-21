@@ -39,6 +39,8 @@ interface TaskRow {
   archived_at: string | null;
   due_time: string | null;
   alarm_minutes: number | null;
+  paused_at: string | null;
+  sort_order: number | null;
 }
 
 interface BlockRow {
@@ -109,6 +111,8 @@ const toTask = (r: TaskRow): Task => ({
   archivedAt: r.archived_at,
   dueTime: r.due_time,
   alarmMinutes: r.alarm_minutes,
+  pausedAt: r.paused_at ?? null,
+  sortOrder: r.sort_order ?? null,
 });
 
 const toBlock = (r: BlockRow): TimeBlock => ({
@@ -211,7 +215,7 @@ export function deleteCourse(db: Db, id: number): void {
   });
 }
 
-export type NewTask = Omit<Task, 'id' | 'archivedAt' | 'dueTime' | 'alarmMinutes'> &
+export type NewTask = Omit<Task, 'id' | 'archivedAt' | 'dueTime' | 'alarmMinutes' | 'pausedAt' | 'sortOrder'> &
   Partial<Pick<Task, 'dueTime' | 'alarmMinutes'>>;
 
 export function insertTask(db: Db, t: NewTask): number {
@@ -263,6 +267,29 @@ export function updateBlock(db: Db, b: TimeBlock): void {
 
 export function deleteBlock(db: Db, id: number): void {
   db.run('DELETE FROM time_blocks WHERE id = ?', [id]);
+}
+
+export function setTaskPausedAt(db: Db, id: number, pausedAt: string | null): void {
+  db.run('UPDATE tasks SET paused_at = ? WHERE id = ?', [pausedAt, id]);
+}
+
+/**
+ * `ids` take positions 0…n-1. Tasks that already had a position but are not in `ids`
+ * keep their relative order after them; tasks without one stay unordered.
+ */
+export function setTaskOrder(db: Db, ids: number[]): void {
+  db.transaction(() => {
+    const listed = new Set(ids);
+    const others = db
+      .all<{ id: number }>('SELECT id FROM tasks WHERE sort_order IS NOT NULL ORDER BY sort_order, id')
+      .map((r) => r.id)
+      .filter((id) => !listed.has(id));
+    [...ids, ...others].forEach((id, i) => db.run('UPDATE tasks SET sort_order = ? WHERE id = ?', [i, id]));
+  });
+}
+
+export function clearTaskOrder(db: Db): void {
+  db.run('UPDATE tasks SET sort_order = NULL');
 }
 
 export function deleteTask(db: Db, id: number): void {

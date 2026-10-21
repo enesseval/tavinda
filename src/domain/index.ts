@@ -13,3 +13,4 @@ export * from './widget';
 export * from './notifications';
 export * from './taskList';
 export * from './schedule';
+export * from './taskState';
