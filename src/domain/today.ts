@@ -10,7 +10,7 @@ import {
   shareForInstance,
 } from './heat';
 import { OVERDUE_DAYS } from './reconcile';
-import { isLive } from './taskState';
+import { byUserOrder, isLive } from './taskState';
 import type { AppData, Course, HeatLevel, LocalDate, Task, TaskInstance } from './types';
 
 /** Deadline tasks further out than this live only in the long-term strip. */
@@ -146,9 +146,11 @@ export function buildTodayModel(data: AppData, today: LocalDate): TodayModel {
   const todayish = items.filter(
     (i) => i.group === 'overdue' || i.group === 'last' || i.group === 'today' || i.group === 'carried',
   );
+  // The user's own order (Görevler › Düzenle) wins; without one, hottest first.
+  const ranked = byUserOrder<TodayItem>(compareHottest);
   // Work that can still be done on time comes first; overdue work leads only when nothing else is open.
   const onTime = todayish.filter((i) => !i.overdue);
-  const hero = [...(onTime.length ? onTime : todayish)].sort(compareHottest)[0] ?? null;
+  const hero = [...(onTime.length ? onTime : todayish)].sort(ranked)[0] ?? null;
 
   const order: TodayGroupKey[] = ['overdue', 'last', 'today', 'carried', 'upcoming', 'ended'];
   const groups = order
@@ -156,7 +158,7 @@ export function buildTodayModel(data: AppData, today: LocalDate): TodayModel {
       key,
       items: items
         .filter((i) => i.group === key && i !== hero)
-        .sort(key === 'upcoming' ? (a, b) => a.instance.scheduledDate.localeCompare(b.instance.scheduledDate) : compareHottest),
+        .sort(key === 'upcoming' ? (a, b) => a.instance.scheduledDate.localeCompare(b.instance.scheduledDate) : ranked),
     }))
     .filter((g) => g.items.length > 0);
 

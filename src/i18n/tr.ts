@@ -230,7 +230,7 @@ export const t = {
     edit: 'Düzenle',
     editDone: 'Bitti',
     editHint:
-      'Sürükleyerek sırala. Tikini kaldırdığın görev, tekrar işaretleyene kadar Bugün’de, takvimde ve bildirimlerde görünmez.',
+      'Sürükleyerek sırala; Bugün de bu sırayı izler. Tikini kaldırdığın görev, tekrar işaretleyene kadar Bugün’de, takvimde ve bildirimlerde görünmez.',
     resetOrder: 'Isıya göre sırala',
     orderReset: 'Sıralama ısıya döndü.',
     rowWeekly: (day: string | null) => (day ? `Her hafta · ${day}` : 'Her hafta'),

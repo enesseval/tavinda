@@ -116,6 +116,29 @@ describe('Görevler order and paused list', () => {
     expect(editRows(model, 'recurring').map((r) => r.task.id)).toEqual([5]);
   });
 
+  test('Bugün follows the same order, hero included', () => {
+    const data = appData({
+      // All within two weeks, so none moves to the long-term strip.
+      tasks: [
+        t(1, { sortOrder: 0, dueAt: '2026-10-12' }),
+        t(2, { sortOrder: 1, dueAt: '2026-10-04' }),
+        t(3, { sortOrder: 2, dueAt: '2026-10-13' }),
+      ],
+      instances: [
+        { ...i(101, 1), windowEnd: '2026-10-12' },
+        { ...i(102, 2), windowEnd: '2026-10-04' },
+        { ...i(103, 3), windowEnd: '2026-10-13' },
+      ],
+    });
+    const model = buildTodayModel(data, '2026-10-02');
+    const order = [model.hero, ...model.groups.flatMap((g) => g.items)].map((x) => x?.task.id);
+    // Task 2 is hotter, but the user put task 1 first.
+    expect(model.hero?.task.id).toBe(1);
+    expect(order.indexOf(2)).toBeLessThan(order.indexOf(3));
+    const byHeat = buildTodayModel({ ...data, tasks: data.tasks.map((x) => ({ ...x, sortOrder: null })) }, '2026-10-02');
+    expect(byHeat.hero?.task.id).toBe(2);
+  });
+
   test('without an order the list stays hottest first', () => {
     const data = appData({
       tasks: [t(1, { dueAt: '2026-12-20' }), t(2, { dueAt: '2026-10-04' })],

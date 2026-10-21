@@ -1,4 +1,4 @@
-import { isPaused } from './taskState';
+import { byUserOrder, isPaused } from './taskState';
 import { makeItem, type TodayItem } from './today';
 import type { AppData, Course, HeatLevel, LocalDate, Task } from './types';
 
@@ -35,21 +35,6 @@ export interface TaskListModel {
   risk: Record<RiskLevel, number>;
   /** True once the user has ordered anything by hand. */
   customOrder: boolean;
-}
-
-/**
- * Tasks without a position come first (new ones stay visible), then the user's
- * order; `fallback` decides among unordered ones and within one task.
- */
-function byUserOrder<T extends { task: Task }>(fallback: (a: T, b: T) => number) {
-  return (a: T, b: T): number => {
-    const x = a.task.sortOrder;
-    const y = b.task.sortOrder;
-    if (x == null && y == null) return fallback(a, b);
-    if (x == null) return -1;
-    if (y == null) return 1;
-    return x - y || a.task.id - b.task.id || fallback(a, b);
-  };
 }
 
 /** Everything for the Görevler tab. */
