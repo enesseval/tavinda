@@ -242,10 +242,11 @@ describe('week window rows', () => {
 });
 
 describe('countdown and deadline reminders', () => {
-  test('due instant: deadline hour or 23:59 for weekly; countdown parts', () => {
+  test('due instant: the task’s hour (weekly too), 23:59 when unset; countdown parts', () => {
     const due = dueInstant({ windowEnd: '2026-10-04' }, { kind: 'deadline', dueTime: '17:00' });
     expect(due.getHours()).toBe(17);
-    expect(dueInstant({ windowEnd: '2026-10-04' }, { kind: 'weekly', dueTime: '09:00' }).getMinutes()).toBe(59);
+    expect(dueInstant({ windowEnd: '2026-10-04' }, { kind: 'weekly', dueTime: '09:00' }).getHours()).toBe(9);
+    expect(dueInstant({ windowEnd: '2026-10-04' }, { kind: 'weekly', dueTime: null }).getMinutes()).toBe(59);
     expect(countdownParts(new Date(2026, 9, 2, 1, 9), new Date(2026, 9, 4, 17, 0))).toEqual({
       days: 2,
       hours: 15,

@@ -18,6 +18,7 @@ import {
   undoWrite,
   updateTaskRow,
   setTaskPausedAt,
+  setTaskStartOn,
   setTaskOrder,
   clearTaskOrder,
   wipeAll,
@@ -27,8 +28,9 @@ import {
 } from '../db/repo';
 import { seedDemo } from '../db/seed';
 import { dedupeShortNames } from '../ui/courseDrafts';
-import { applyDefer, applyProgress, isReconcileNoop, reconcile, toLocalTimestamp, type SettingKey } from '../domain';
-import type { BlockKind, LocalDate, Settings, Task, TimeBlock } from '../domain/types';
+import { addDays, applyDefer, applyProgress, isReconcileNoop, reconcile, toLocalTimestamp, type SettingKey } from '../domain';
+import { dueOffsetOf } from '../domain/windows';
+import type { BlockKind, LocalDate, LocalTime, Settings, Task, TimeBlock } from '../domain/types';
 import { endedBlocks, parseTimestamp, runningBlock } from '../domain/schedule';
 import { getNow, getToday } from './clock';
 import { refresh } from './data';
@@ -162,6 +164,12 @@ export interface WeeklyInput {
   title: string;
   courseId: number;
   estimatedMinutes: number;
+  /** Days after the class it is due (0–6); omitted = 6. */
+  dueOffset?: number | null;
+  dueTime?: LocalTime | null;
+  alarmMinutes?: number | null;
+  /** First week: no window that ended before this day opens. */
+  startOn?: LocalDate | null;
 }
 
 export interface DeadlineInput {
@@ -185,6 +193,10 @@ export function createWeeklyTask(input: WeeklyInput): number {
     dailyBudgetMinutes: null,
     warnDays: null,
     createdAt: createdStamp(),
+    dueOffset: input.dueOffset ?? null,
+    dueTime: input.dueTime ?? null,
+    alarmMinutes: input.alarmMinutes ?? null,
+    startOn: input.startOn ?? null,
   });
   runReconcile();
   return id;
@@ -210,7 +222,8 @@ export function createDeadlineTask(input: DeadlineInput): number {
 /**
  * Saves edits. Deadline: the open instance follows the new due date.
  * Weekly: moving to another course drops untouched open windows so the next
- * reconcile opens the right one.
+ * reconcile opens the right one; a new last day moves the open windows' end;
+ * a later first week drops untouched windows that end before it.
  */
 export function updateTask(task: Task, patch: Partial<Omit<Task, 'id' | 'kind' | 'createdAt' | 'archivedAt'>>): void {
   const db = getDb();
@@ -225,6 +238,16 @@ export function updateTask(task: Task, patch: Partial<Omit<Task, 'id' | 'kind' |
     if (next.kind === 'weekly' && next.courseId !== task.courseId) {
       for (const i of instances) {
         if (i.progress === 0) db.run('DELETE FROM task_instances WHERE id = ?', [i.id]);
+      }
+    } else if (next.kind === 'weekly') {
+      const offset = dueOffsetOf(next);
+      for (const i of instances) {
+        if (next.startOn && i.windowEnd < next.startOn && i.progress === 0) {
+          db.run('DELETE FROM task_instances WHERE id = ?', [i.id]);
+          continue;
+        }
+        const end = addDays(i.windowStart, offset);
+        if (end !== i.windowEnd) writeInstance(db, { ...i, windowEnd: end, lockUnlockedOn: null });
       }
     }
   });
@@ -247,6 +270,8 @@ export function setTaskPaused(task: Task, paused: boolean): void {
   db.transaction(() => {
     setTaskPausedAt(db, task.id, paused ? createdStamp() : null);
     if (!paused && task.kind === 'weekly') {
+      // Weeks that closed while paused stay closed (reconcile would reopen one that ended unseen).
+      setTaskStartOn(db, task.id, task.startOn && task.startOn > today ? task.startOn : today);
       for (const i of loadAll(db).instances) {
         if (i.taskId === task.id && i.status === 'active' && i.progress === 0 && i.windowEnd < today) {
           db.run('DELETE FROM task_instances WHERE id = ?', [i.id]);

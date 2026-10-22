@@ -21,6 +21,7 @@ export function PickerSheet({
   title,
   value,
   minimumDate,
+  maximumDate,
   minuteInterval = 5,
   onCancel,
   onDone,
@@ -30,6 +31,7 @@ export function PickerSheet({
   title: string;
   value: Date;
   minimumDate?: Date;
+  maximumDate?: Date;
   minuteInterval?: 1 | 5 | 10 | 15 | 30;
   onCancel: () => void;
   onDone: (d: Date) => void;
@@ -51,6 +53,7 @@ export function PickerSheet({
         mode={mode}
         is24Hour
         minimumDate={minimumDate}
+        maximumDate={maximumDate}
         minuteInterval={minuteInterval}
         onChange={(e, d) => {
           if (e.type === 'set' && d) onDone(d);
@@ -102,6 +105,7 @@ export function PickerSheet({
               themeVariant={scheme}
               accentColor={c.ink}
               minimumDate={minimumDate}
+              maximumDate={maximumDate}
               minuteInterval={minuteInterval}
               onChange={(_e, d) => {
                 if (d) setDraft(d);

@@ -168,7 +168,11 @@ describe('repository', () => {
   test('migration 004 adds pause and order columns, empty for existing tasks', () => {
     const db = openTestDb();
     migrate(db, MIGRATIONS.slice(0, 3));
-    const id = insertTask(db, newTask('Eski'));
+    // Raw SQL: insertTask writes columns that only exist from later migrations.
+    const id = db.run(
+      `INSERT INTO tasks (kind, title, course_id, estimated_minutes, due_at, created_at)
+       VALUES ('deadline', 'Eski', NULL, 60, '2026-11-01', '2026-10-01T10:00:00')`,
+    ).lastInsertRowId;
     migrate(db);
     expect(loadAll(db).tasks.find((x) => x.id === id)).toMatchObject({ pausedAt: null, sortOrder: null });
     setTaskPausedAt(db, id, PAUSED);

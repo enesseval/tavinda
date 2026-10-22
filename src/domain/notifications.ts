@@ -98,18 +98,20 @@ export function planNotifications(data: AppData, now: Date, horizonDays = 7): Pl
     }
   }
 
-  // Deadline tasks: "start now" on the warn day, and the optional last-minutes alarm.
+  // Deadline tasks: "start now" on the warn day. Both kinds: the optional last-minutes alarm.
   for (const task of data.tasks) {
-    if (task.kind !== 'deadline' || !isLive(task)) continue;
+    if (!isLive(task)) continue;
     const inst = data.instances.find((i) => i.taskId === task.id && i.status === 'active');
     if (!inst) continue;
-    const warn = warnDaysFor(task, data.settings);
-    const warnDay = addDays(inst.windowEnd, -warn);
-    const warnAt = logicalDateTime(warnDay, morningTime, cutoff);
-    if (warnDay > inst.windowStart && warnAt > now && inst.progress < 100) {
-      out.push({ kind: 'startNow', id: `start-${inst.id}`, fireAt: warnAt, day: warnDay, title: task.title, daysLeft: warn });
+    if (task.kind === 'deadline') {
+      const warn = warnDaysFor(task, data.settings);
+      const warnDay = addDays(inst.windowEnd, -warn);
+      const warnAt = logicalDateTime(warnDay, morningTime, cutoff);
+      if (warnDay > inst.windowStart && warnAt > now && inst.progress < 100) {
+        out.push({ kind: 'startNow', id: `start-${inst.id}`, fireAt: warnAt, day: warnDay, title: task.title, daysLeft: warn });
+      }
     }
-    if (task.alarmMinutes != null) {
+    if (task.alarmMinutes != null && inst.progress < 100) {
       const at = new Date(dueInstant(inst, task).getTime() - task.alarmMinutes * 60_000);
       if (at > now) {
         out.push({

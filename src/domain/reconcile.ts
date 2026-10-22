@@ -1,7 +1,7 @@
 import { diffDays } from './dates';
 import { isLive } from './taskState';
 import type { Course, LocalDate, NewInstance, Task, TaskInstance } from './types';
-import { currentWeeklyWindow } from './windows';
+import { dueOffsetOf, lastClassDate, weeklyWindowFrom } from './windows';
 
 /** Unfinished work stays open as "Gecikti" this many days after its window ends, then closes. */
 export const OVERDUE_DAYS = 7;
@@ -66,8 +66,12 @@ export function reconcile({ today, courses, tasks, instances }: ReconcileInput):
     if (task.kind === 'weekly') {
       const course = task.courseId != null ? courseById.get(task.courseId) : undefined;
       if (!course) continue;
-      const win = currentWeeklyWindow(today, course.weekday);
+      const win = weeklyWindowFrom(lastClassDate(today, course.weekday), dueOffsetOf(task));
       if (existing.some((i) => i.windowStart === win.start)) continue;
+      // A window that closed before the task existed (or before its first week / resume) never opens.
+      // One that closed while the app wasn't opened still does, as overdue.
+      const from = task.startOn && task.startOn > task.createdAt.slice(0, 10) ? task.startOn : task.createdAt.slice(0, 10);
+      if (win.end < from) continue;
       create.push({
         taskId: task.id,
         windowStart: win.start,

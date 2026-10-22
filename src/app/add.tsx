@@ -8,11 +8,11 @@ import { AppText } from '../components/AppText';
 import { ToastHost } from '../components/Toast';
 import { Button, Chip, Grabber, SectionLabel, Stepper, Toggle } from '../components/controls';
 import { PickerSheet } from '../components/PickerSheet';
-import { ChevronLeft, DoneBadge, FlagIcon, RepeatIcon } from '../components/icons';
+import { ChevronLeft, ChevronRight, DoneBadge, FlagIcon, RepeatIcon } from '../components/icons';
 import { addDays, dateAtTime, DEFAULT_DUE_TIME, diffDays, minutesToTime, parseLocalDate, toLocalDate } from '../domain/dates';
 import { deadlineHeatValues, deadlinePreviewRamp, suggestedDailyShare, weeklyBaseHeat } from '../domain/heat';
-import type { Course, Task } from '../domain/types';
-import { currentWeeklyWindow } from '../domain/windows';
+import type { Course, LocalDate, Task } from '../domain/types';
+import { dueOffsetOf, firstOpenWindow, WEEKLY_DEFAULT_OFFSET } from '../domain/windows';
 import { fmtLongDay, fmtMinutes, fmtShortDate, fmtWeekdayShort } from '../i18n/format';
 import { HEAT_NAMES_LOWER, t, TEMPLATES, WEEKDAYS_SHORT } from '../i18n/tr';
 import { createDeadlineTask, createWeeklyTask, updateTask } from '../services/actions';
@@ -108,6 +108,7 @@ function Row({
         >
           {value}
         </AppText>
+        {onPress ? <ChevronRight color={c.ink3} size={14} /> : null}
       </View>
     </View>
   );
@@ -117,6 +118,63 @@ function Row({
     </Touchable>
   ) : (
     body
+  );
+}
+
+/** Optional "son dakika" alarm before the due time (deadline and weekly). */
+function AlarmCard({ value, onChange, c }: { value: number | null; onChange: (v: number | null) => void; c: ColorTokens }) {
+  return (
+    <>
+      <SectionLabel>{t.add.alarm}</SectionLabel>
+      <View
+        style={{
+          backgroundColor: c.surface,
+          borderWidth: 1,
+          borderColor: c.line,
+          borderRadius: radii.input,
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            minHeight: 52,
+            marginLeft: 16,
+            paddingRight: 12,
+            borderBottomWidth: value != null ? 0.5 : 0,
+            borderBottomColor: c.line,
+          }}
+        >
+          <AppText variant="bodyLarge">{t.add.alarmToggle}</AppText>
+          <Toggle label={t.add.alarmToggle} value={value != null} onChange={(v) => onChange(v ? 10 : null)} />
+        </View>
+        {value != null ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              minHeight: 52,
+              marginLeft: 16,
+              paddingRight: 12,
+            }}
+          >
+            <AppText variant="headline" tabular>
+              {t.add.alarmValue(value)}
+            </AppText>
+            <Stepper
+              onDec={() => onChange(ALARM_STEPS[Math.max(0, ALARM_STEPS.indexOf(value ?? 10) - 1)])}
+              onInc={() => onChange(ALARM_STEPS[Math.min(ALARM_STEPS.length - 1, ALARM_STEPS.indexOf(value ?? 10) + 1)])}
+            />
+          </View>
+        ) : null}
+      </View>
+      <AppText variant="footnote" tone="ink2" style={{ paddingTop: 8, paddingHorizontal: 4 }}>
+        {t.add.alarmNote}
+      </AppText>
+    </>
   );
 }
 
@@ -140,6 +198,10 @@ export default function AddTask() {
   const [wTitle, setWTitle] = useState(editing?.kind === 'weekly' ? editing.title : '');
   const [wCourse, setWCourse] = useState<number | null>(editing?.kind === 'weekly' ? editing.courseId : (courses[0]?.id ?? null));
   const [wEst, setWEst] = useState(editing?.kind === 'weekly' ? editing.estimatedMinutes : 45);
+  const [wOffset, setWOffset] = useState(editing?.kind === 'weekly' ? dueOffsetOf(editing) : WEEKLY_DEFAULT_OFFSET);
+  const [wTime, setWTime] = useState(editing?.kind === 'weekly' ? (editing.dueTime ?? DEFAULT_DUE_TIME) : DEFAULT_DUE_TIME);
+  const [wAlarm, setWAlarm] = useState<number | null>(editing?.kind === 'weekly' ? editing.alarmMinutes : null);
+  const [wStartOn, setWStartOn] = useState<LocalDate | null>(editing?.kind === 'weekly' ? editing.startOn : null);
 
   // Deadline form
   const [dTitle, setDTitle] = useState(editing?.kind === 'deadline' ? editing.title : '');
@@ -152,10 +214,13 @@ export default function AddTask() {
   const [dWarn, setDWarn] = useState(editing?.warnDays ?? data.settings.warnDays);
   const [dTime, setDTime] = useState(editing?.kind === 'deadline' ? (editing.dueTime ?? DEFAULT_DUE_TIME) : DEFAULT_DUE_TIME);
   const [dAlarm, setDAlarm] = useState<number | null>(editing?.kind === 'deadline' ? editing.alarmMinutes : null);
-  const [picker, setPicker] = useState<'date' | 'time' | null>(null);
+  const [picker, setPicker] = useState<'date' | 'time' | 'wStart' | 'wEnd' | 'wTime' | null>(null);
 
   const weeklyCourse: Course | undefined = courses.find((k) => k.id === wCourse);
-  const win = weeklyCourse ? currentWeeklyWindow(today, weeklyCourse.weekday) : null;
+  // The first window the task opens: this week's if still open, a later first week if picked.
+  const win = weeklyCourse
+    ? firstOpenWindow(wStartOn && wStartOn > today ? wStartOn : today, weeklyCourse.weekday, wOffset)
+    : null;
   const winLen = win ? diffDays(win.end, win.start) + 1 : 7;
   const ramp = win
     ? Array.from({ length: winLen }, (_, i) => ({ day: addDays(win.start, i), heat: weeklyBaseHeat(i, winLen) }))
@@ -190,12 +255,28 @@ export default function AddTask() {
         return;
       }
       if (editing) {
-        updateTask(editing, { title: wTitle, courseId: wCourse, estimatedMinutes: wEst });
+        updateTask(editing, {
+          title: wTitle,
+          courseId: wCourse,
+          estimatedMinutes: wEst,
+          dueOffset: wOffset,
+          dueTime: wTime,
+          alarmMinutes: wAlarm,
+          startOn: wStartOn,
+        });
         showToast(t.add.updated);
         router.back();
         return;
       }
-      createWeeklyTask({ title: wTitle, courseId: wCourse, estimatedMinutes: wEst });
+      createWeeklyTask({
+        title: wTitle,
+        courseId: wCourse,
+        estimatedMinutes: wEst,
+        dueOffset: wOffset,
+        dueTime: wTime,
+        alarmMinutes: wAlarm,
+        startOn: wStartOn,
+      });
       setAdded(t.add.addedWeekly(wTitle.trim(), weeklyCourse.name, fmtLongDay(win.end)));
     } else {
       const input = {
@@ -367,8 +448,9 @@ export default function AddTask() {
                     overflow: 'hidden',
                   }}
                 >
-                  <Row c={c} label={t.add.windowStart} value={fmtLongDay(win.start)} />
-                  <Row c={c} label={t.add.windowEnd} value={fmtLongDay(win.end)} strong />
+                  <Row c={c} label={t.add.windowStart} value={fmtLongDay(win.start)} onPress={() => setPicker('wStart')} />
+                  <Row c={c} label={t.add.windowEnd} value={fmtLongDay(win.end)} strong onPress={() => setPicker('wEnd')} />
+                  <Row c={c} label={t.add.dueHour} value={wTime} onPress={() => setPicker('wTime')} />
                   <View style={{ paddingTop: 14, paddingHorizontal: 16, paddingBottom: 16, gap: 8 }}>
                     <View style={{ flexDirection: 'row', gap: 3 }}>
                       {ramp.map((r) => (
@@ -381,6 +463,7 @@ export default function AddTask() {
                       ))}
                     </View>
                     <AppText variant="footnote" tone="ink2">
+                      {t.add.weeklyEvery(fmtWeekdayShort(win.start), fmtWeekdayShort(win.end), wTime)}{' '}
                       {t.add.rampNote(Math.max(0, coolDays))}
                     </AppText>
                   </View>
@@ -411,6 +494,8 @@ export default function AddTask() {
             <AppText variant="footnote" tone="ink2" style={{ paddingTop: 8, paddingHorizontal: 4 }}>
               {t.add.estimateNote}
             </AppText>
+
+            <AlarmCard value={wAlarm} onChange={setWAlarm} c={c} />
           </View>
         ) : null}
 
@@ -510,57 +595,7 @@ export default function AddTask() {
               {t.add.warnNote(dWarn)}
             </AppText>
 
-            <SectionLabel>{t.add.alarm}</SectionLabel>
-            <View
-              style={{
-                backgroundColor: c.surface,
-                borderWidth: 1,
-                borderColor: c.line,
-                borderRadius: radii.input,
-                overflow: 'hidden',
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  minHeight: 52,
-                  marginLeft: 16,
-                  paddingRight: 12,
-                  borderBottomWidth: dAlarm != null ? 0.5 : 0,
-                  borderBottomColor: c.line,
-                }}
-              >
-                <AppText variant="bodyLarge">{t.add.alarmToggle}</AppText>
-                <Toggle label={t.add.alarmToggle} value={dAlarm != null} onChange={(v) => setDAlarm(v ? 10 : null)} />
-              </View>
-              {dAlarm != null ? (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    minHeight: 52,
-                    marginLeft: 16,
-                    paddingRight: 12,
-                  }}
-                >
-                  <AppText variant="headline" tabular>
-                    {t.add.alarmValue(dAlarm)}
-                  </AppText>
-                  <Stepper
-                    onDec={() => setDAlarm((v) => ALARM_STEPS[Math.max(0, ALARM_STEPS.indexOf(v ?? 10) - 1)])}
-                    onInc={() =>
-                      setDAlarm((v) => ALARM_STEPS[Math.min(ALARM_STEPS.length - 1, ALARM_STEPS.indexOf(v ?? 10) + 1)])
-                    }
-                  />
-                </View>
-              ) : null}
-            </View>
-            <AppText variant="footnote" tone="ink2" style={{ paddingTop: 8, paddingHorizontal: 4 }}>
-              {t.add.alarmNote}
-            </AppText>
+            <AlarmCard value={dAlarm} onChange={setDAlarm} c={c} />
 
             <View
               accessible
@@ -628,6 +663,47 @@ export default function AddTask() {
           setPicker(null);
         }}
       />
+      {win ? (
+        <>
+          <PickerSheet
+            visible={picker === 'wStart'}
+            mode="date"
+            title={t.add.firstWeekTitle}
+            value={parseLocalDate(wStartOn ?? today)}
+            minimumDate={parseLocalDate(today)}
+            onCancel={() => setPicker(null)}
+            onDone={(d) => {
+              const day = toLocalDate(d);
+              setWStartOn(day > today ? day : null);
+              setPicker(null);
+            }}
+          />
+          <PickerSheet
+            visible={picker === 'wEnd'}
+            mode="date"
+            title={t.add.windowEnd}
+            value={parseLocalDate(win.end)}
+            minimumDate={parseLocalDate(win.start)}
+            maximumDate={parseLocalDate(addDays(win.start, 6))}
+            onCancel={() => setPicker(null)}
+            onDone={(d) => {
+              setWOffset(Math.max(0, Math.min(6, diffDays(toLocalDate(d), win.start))));
+              setPicker(null);
+            }}
+          />
+          <PickerSheet
+            visible={picker === 'wTime'}
+            mode="time"
+            title={t.add.dueHour}
+            value={dateAtTime(win.end, wTime)}
+            onCancel={() => setPicker(null)}
+            onDone={(d) => {
+              setWTime(minutesToTime(d.getHours() * 60 + d.getMinutes()));
+              setPicker(null);
+            }}
+          />
+        </>
+      ) : null}
       <ToastHost bottom={insets.bottom + 24} />
       {added ? (
         <Animated.View

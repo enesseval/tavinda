@@ -159,6 +159,13 @@ describe('app smoke test', () => {
 
     act(() => router.push('/add?kind=weekly'));
     fireEvent.press(await screen.findByText('Soru çöz'));
+    // Every row of the window opens a picker.
+    expect(screen.queryByText('Hangi haftadan başlasın?')).toBeNull();
+    fireEvent.press(screen.getByText('Başlangıç'));
+    expect(await screen.findByText('Hangi haftadan başlasın?')).toBeTruthy();
+    const cancels = screen.getAllByText('Vazgeç');
+    fireEvent.press(cancels[cancels.length - 1]);
+    expect(screen.getByText(/Her hafta .* açılır, son teslim/)).toBeTruthy();
     fireEvent.press(screen.getByText('Ekle'));
     expect(await screen.findByText('Ekledim.')).toBeTruthy();
 

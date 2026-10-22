@@ -33,8 +33,12 @@ export interface Task {
   estimatedMinutes: number;
   /** Deadline tasks only. */
   dueAt: LocalDate | null;
-  /** Deadline hour; null means 23:59. */
+  /** Hour on the last day (deadline, and weekly windows); null means 23:59. */
   dueTime: LocalTime | null;
+  /** Weekly only: due this many days after the class (0–6); null = 6, the day before the next class. */
+  dueOffset: number | null;
+  /** Weekly only: no window that ended before this day opens (later first week, resume after a pause). */
+  startOn: LocalDate | null;
   /** Minutes before the deadline for an extra "last minutes" alarm; null = off. */
   alarmMinutes: number | null;
   dailyBudgetMinutes: number | null;

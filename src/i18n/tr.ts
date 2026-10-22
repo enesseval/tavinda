@@ -141,6 +141,8 @@ export const t = {
     window: 'Pencere',
     windowStart: 'Başlangıç',
     windowEnd: 'Son gün',
+    firstWeekTitle: 'Hangi haftadan başlasın?',
+    weeklyEvery: (open: string, last: string, time: string) => `Her hafta ${open} açılır, son teslim ${last} ${time}.`,
     rampNote: (cool: number) =>
       cool > 0
         ? `İlk ${cool} gün serin. Bir sonraki dersle döngü yeniden serin başlar.`

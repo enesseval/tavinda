@@ -102,7 +102,7 @@ export function dueInstant(
   inst: { windowEnd: LocalDate },
   task: { kind: 'weekly' | 'deadline'; dueTime: LocalTime | null },
 ): Date {
-  return dateAtTime(inst.windowEnd, task.kind === 'deadline' ? (task.dueTime ?? DEFAULT_DUE_TIME) : DEFAULT_DUE_TIME);
+  return dateAtTime(inst.windowEnd, task.dueTime ?? DEFAULT_DUE_TIME);
 }
 
 /** Whole days, hours and minutes until `due` (negative parts never returned). */

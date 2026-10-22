@@ -41,6 +41,8 @@ interface TaskRow {
   alarm_minutes: number | null;
   paused_at: string | null;
   sort_order: number | null;
+  due_offset: number | null;
+  start_on: string | null;
 }
 
 interface BlockRow {
@@ -113,6 +115,8 @@ const toTask = (r: TaskRow): Task => ({
   alarmMinutes: r.alarm_minutes,
   pausedAt: r.paused_at ?? null,
   sortOrder: r.sort_order ?? null,
+  dueOffset: r.due_offset ?? null,
+  startOn: r.start_on ?? null,
 });
 
 const toBlock = (r: BlockRow): TimeBlock => ({
@@ -215,14 +219,17 @@ export function deleteCourse(db: Db, id: number): void {
   });
 }
 
-export type NewTask = Omit<Task, 'id' | 'archivedAt' | 'dueTime' | 'alarmMinutes' | 'pausedAt' | 'sortOrder'> &
-  Partial<Pick<Task, 'dueTime' | 'alarmMinutes'>>;
+export type NewTask = Omit<
+  Task,
+  'id' | 'archivedAt' | 'dueTime' | 'alarmMinutes' | 'pausedAt' | 'sortOrder' | 'dueOffset' | 'startOn'
+> &
+  Partial<Pick<Task, 'dueTime' | 'alarmMinutes' | 'dueOffset' | 'startOn'>>;
 
 export function insertTask(db: Db, t: NewTask): number {
   return db.run(
     `INSERT INTO tasks (kind, title, course_id, estimated_minutes, due_at, daily_budget_minutes, warn_days, created_at,
-       due_time, alarm_minutes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       due_time, alarm_minutes, due_offset, start_on)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       t.kind,
       t.title,
@@ -234,6 +241,8 @@ export function insertTask(db: Db, t: NewTask): number {
       t.createdAt,
       t.dueTime ?? null,
       t.alarmMinutes ?? null,
+      t.dueOffset ?? null,
+      t.startOn ?? null,
     ],
   ).lastInsertRowId;
 }
@@ -241,9 +250,21 @@ export function insertTask(db: Db, t: NewTask): number {
 export function updateTaskRow(db: Db, t: Task): void {
   db.run(
     `UPDATE tasks SET title = ?, course_id = ?, estimated_minutes = ?, due_at = ?, daily_budget_minutes = ?, warn_days = ?,
-       due_time = ?, alarm_minutes = ?
+       due_time = ?, alarm_minutes = ?, due_offset = ?, start_on = ?
      WHERE id = ?`,
-    [t.title, t.courseId, t.estimatedMinutes, t.dueAt, t.dailyBudgetMinutes, t.warnDays, t.dueTime, t.alarmMinutes, t.id],
+    [
+      t.title,
+      t.courseId,
+      t.estimatedMinutes,
+      t.dueAt,
+      t.dailyBudgetMinutes,
+      t.warnDays,
+      t.dueTime,
+      t.alarmMinutes,
+      t.dueOffset,
+      t.startOn,
+      t.id,
+    ],
   );
 }
 
@@ -267,6 +288,10 @@ export function updateBlock(db: Db, b: TimeBlock): void {
 
 export function deleteBlock(db: Db, id: number): void {
   db.run('DELETE FROM time_blocks WHERE id = ?', [id]);
+}
+
+export function setTaskStartOn(db: Db, id: number, startOn: string | null): void {
+  db.run('UPDATE tasks SET start_on = ? WHERE id = ?', [startOn, id]);
 }
 
 export function setTaskPausedAt(db: Db, id: number, pausedAt: string | null): void {
