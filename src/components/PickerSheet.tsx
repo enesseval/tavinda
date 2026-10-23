@@ -3,10 +3,13 @@ import { useEffect, useState } from 'react';
 import { Modal, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { parseLocalDate, toLocalDate } from '../domain/dates';
 import { t } from '../i18n/tr';
+import { useNow } from '../services/clock';
 import { useTheme } from '../theme/theme';
 import { radii } from '../theme/tokens';
 import { AppText } from './AppText';
+import { CalendarPicker } from './CalendarPicker';
 import { Button, Grabber } from './controls';
 import { Touchable } from './Touchable';
 
@@ -38,6 +41,7 @@ export function PickerSheet({
 }) {
   const { c, scheme } = useTheme();
   const insets = useSafeAreaInsets();
+  const { today } = useNow();
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
@@ -95,24 +99,38 @@ export function PickerSheet({
               <AppText variant="headline">{t.common.ok}</AppText>
             </Touchable>
           </View>
-          <View style={{ alignItems: 'center' }}>
-            <DateTimePicker
-              value={draft}
-              mode={mode}
-              display={mode === 'date' ? 'inline' : 'spinner'}
-              is24Hour
-              locale="tr-TR"
-              themeVariant={scheme}
-              accentColor={c.ink}
-              minimumDate={minimumDate}
-              maximumDate={maximumDate}
-              minuteInterval={minuteInterval}
-              onChange={(_e, d) => {
-                if (d) setDraft(d);
+          {mode === 'date' ? (
+            <CalendarPicker
+              value={toLocalDate(draft)}
+              today={today}
+              min={minimumDate ? toLocalDate(minimumDate) : undefined}
+              max={maximumDate ? toLocalDate(maximumDate) : undefined}
+              onChange={(day) => {
+                // Keep the time of day; only the date changes here.
+                const next = parseLocalDate(day);
+                next.setHours(draft.getHours(), draft.getMinutes(), 0, 0);
+                setDraft(next);
               }}
-              style={mode === 'date' ? { alignSelf: 'stretch' } : undefined}
             />
-          </View>
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <DateTimePicker
+                value={draft}
+                mode={mode}
+                display="spinner"
+                is24Hour
+                locale="tr-TR"
+                themeVariant={scheme}
+                accentColor={c.ink}
+                minimumDate={minimumDate}
+                maximumDate={maximumDate}
+                minuteInterval={minuteInterval}
+                onChange={(_e, d) => {
+                  if (d) setDraft(d);
+                }}
+              />
+            </View>
+          )}
           <Button label={t.common.ok} onPress={() => onDone(draft)} />
         </View>
       </View>
