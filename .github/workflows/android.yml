@@ -1,5 +1,5 @@
-# Builds the Google Play bundle (.aab). Run it from Actions → "Android bundle" → Run workflow,
-# then download the "tavinda-aab" artifact and upload it in Play Console.
+# Builds the Google Play bundle (.aab) on every push that changes the app (or Actions → "Android bundle" →
+# Run workflow). Download the "tavinda-aab-<n>" artifact and upload it in Play Console.
 # Signing needs four repository secrets (Settings → Secrets and variables → Actions):
 #   ANDROID_UPLOAD_KEYSTORE_BASE64, ANDROID_UPLOAD_STORE_PASSWORD,
 #   ANDROID_UPLOAD_KEY_ALIAS, ANDROID_UPLOAD_KEY_PASSWORD
@@ -12,14 +12,14 @@ on:
       version_code:
         description: 'versionCode (empty = run number; must be higher than the last upload)'
         required: false
+  # Every push that changes the app builds a bundle; docs and store files don't.
   push:
     branches: [claude/cool-johnson-itf1wl]
-    paths:
-      - 'app.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'plugins/**'
-      - '.github/workflows/android.yml'
+    paths-ignore:
+      - 'docs/**'
+      - 'store/**'
+      - '**/*.md'
+      - 'scripts/play-screenshots.sh'
 
 concurrency:
   group: android-${{ github.ref }}
