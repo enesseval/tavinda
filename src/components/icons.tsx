@@ -29,6 +29,17 @@ export function CheckIcon({ color, size = 18, strokeWidth = 2.2 }: IconProps & {
   );
 }
 
+/** Circled "i": opens an explanation. */
+export function InfoIcon({ color, size = 18 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9.25} fill="none" stroke={color} strokeWidth={1.6} />
+      <Path d="M12 10.8v5.6" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+      <Circle cx={12} cy={7.6} r={1.15} fill={color} />
+    </Svg>
+  );
+}
+
 /** Three bars: "drag me" in edit lists. */
 export function DragHandleIcon({ color, size = 18 }: IconProps) {
   return (

@@ -104,6 +104,7 @@ export default function SettingsScreen() {
         <SettingsGroup title={t.settings.groupProgram}>
           <SettingsRow
             label={t.hours.row}
+            info={t.settings.info.dayHours}
             value={t.hours.value(s.dayHours.mode, s.dayHours.start, s.dayHours.end)}
             chevron
             onPress={() => router.push('/settings/hours')}

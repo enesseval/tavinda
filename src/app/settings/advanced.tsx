@@ -1,6 +1,7 @@
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppText } from '../../components/AppText';
 import { Segmented, Stepper } from '../../components/controls';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SettingsGroup, SettingsRow } from '../../components/settings';
@@ -27,6 +28,7 @@ export default function AdvancedSettings() {
         <SettingsGroup title={t.settings.groupDay} footer={t.settings.cutoffFoot(s.cutoff)}>
           <SettingsRow
             label={t.settings.cutoff}
+            info={t.settings.info.cutoff}
             value={s.cutoff}
             last
             right={
@@ -44,6 +46,7 @@ export default function AdvancedSettings() {
         >
           <SettingsRow
             label={t.settings.lock}
+            info={t.settings.info.lock}
             last
             right={
               <Segmented<LockMode>
@@ -62,6 +65,7 @@ export default function AdvancedSettings() {
         <SettingsGroup title={t.settings.groupUrgency} footer={t.settings.warnFoot(s.warnDays)}>
           <SettingsRow
             label={t.settings.warn}
+            info={t.settings.info.warn}
             value={t.settings.warnValue(s.warnDays)}
             right={
               <Stepper
@@ -72,7 +76,9 @@ export default function AdvancedSettings() {
           />
           <SettingsRow
             label={t.settings.budget}
+            info={t.settings.info.budget}
             value={fmtMinutes(s.dailyBudgetMinutes)}
+            last
             right={
               <Stepper
                 onDec={() => setSetting('dailyBudgetMinutes', Math.max(15, s.dailyBudgetMinutes - 15))}
@@ -80,17 +86,36 @@ export default function AdvancedSettings() {
               />
             }
           />
-          <SettingsRow
-            label={t.settings.heatScale}
-            last
-            right={
-              <View style={{ flexDirection: 'row', gap: 4 }} accessibilityLabel={HEAT_NAMES.join(', ')}>
-                {c.heat.map((h) => (
-                  <View key={h} style={{ width: 18, height: 8, borderRadius: 4, backgroundColor: h }} />
-                ))}
-              </View>
-            }
-          />
+        </SettingsGroup>
+
+        {/* A legend, not a control: what each heat means. */}
+        <SettingsGroup title={t.settings.heatScale} footer={t.settings.heatLegendFoot}>
+          {HEAT_NAMES.map((name, i) => (
+            <View
+              key={name}
+              accessible
+              accessibilityLabel={`${name}: ${t.intro.heat[i]}`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                minHeight: 44,
+                marginLeft: 16,
+                paddingVertical: 8,
+                paddingRight: 16,
+                borderBottomWidth: i < HEAT_NAMES.length - 1 ? 0.5 : 0,
+                borderBottomColor: c.line,
+              }}
+            >
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.heat[i] }} />
+              <AppText variant="bodyStrong" style={{ width: 72 }}>
+                {name}
+              </AppText>
+              <AppText variant="footnote" tone="ink2" style={{ flex: 1 }}>
+                {t.intro.heat[i]}
+              </AppText>
+            </View>
+          ))}
         </SettingsGroup>
       </ScrollView>
     </View>

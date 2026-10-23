@@ -390,8 +390,34 @@ export const t = {
     notifStartNow: 'Teslime yaklaşınca “Artık başla”',
     notifBlockEnd: 'Blok bitince sor',
     notifClassEnd: 'Ders bitince “Sırada ne var?”',
-    cutoff: 'Günün bittiği saat',
-    cutoffFoot: (time: string) => `${time}'dan önce yaptığın iş bir önceki güne sayılır.`,
+    cutoff: 'Yeni gün başlangıcı',
+    cutoffFoot: (time: string) =>
+      time === '00:00' ? 'Gün gece yarısı başlar.' : 'Gece yarısından sonra bu saate kadar yaptığın iş bir önceki güne sayılır.',
+    infoA11y: (name: string) => `${name} nedir?`,
+    info: {
+      cutoff: {
+        title: 'Yeni gün başlangıcı',
+        body: 'Uygulamanın yeni güne geçtiği saat. Gece geç saatte çalışıyorsan 03:00 ya da 04:00 seç: o saate kadar girdiğin ilerleme bugüne sayılır, Bugün listesi ve günlük payın sen uyumadan sıfırlanmaz. Gece yarısından sonra çalışmıyorsan 00:00 kalabilir.',
+      },
+      lock: {
+        title: 'Son gün kilidi',
+        body: 'Bir işin son günü geldiğinde erteleme kapanır, son günü kaçırmayasın diye. Katı: son gün hiç ertelenemez. Esnek: son gün bir kez daha erteleyebilirsin, iş bir gün uzar; bu hak günde bir kez kullanılır.',
+      },
+      warn: {
+        title: 'Uyarı eşiği',
+        body: 'Teslim tarihli işler için. Teslime bu kadar gün kala iş en az Sıcak olur ve o sabah “Artık başla” bildirimi gelir. Buradaki değer yeni işlerin varsayılanı; her işin kendi formunda ayrıca değiştirebilirsin.',
+      },
+      budget: {
+        title: 'Günlük ayrılabilir süre',
+        body: 'Bir teslim tarihli işe günde en fazla ne kadar ayırabileceğin. Kalan iş kalan günlere bölünür; bu süreyi ne kadar doldurduğuna göre iş ısınır, neredeyse tamamı gerekiyorsa Kızgın olur. Yeni işlerin varsayılanı; her işte ayrıca ayarlanabilir.',
+      },
+      dayHours: {
+        title: 'Günlük program',
+        body: 'Gününün hangi saatler arasında geçtiği. Ders bitip boş kaldığında “Ne yapacaksın?” sorusu yalnızca bu saatlerde gelir, takvimin hafta görünümü de bu saatleri gösterir. Günün hangi tarihe sayıldığını Gelişmiş › Yeni gün başlangıcı belirler.',
+      },
+    },
+    heatLegendFoot:
+      'Isıyı uygulama kendisi hesaplar; buradan değiştirilmez. Yukarıdaki uyarı eşiği ve günlük süre, teslim tarihli işlerin ne zaman ısınacağını etkiler.',
     groupCalendar: 'Takvim ve kaynaklar',
     calendars: 'Okunan takvimler',
     calendarsValue: (n: number) => (n ? `${n} takvim` : 'Tümü'),

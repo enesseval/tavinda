@@ -3,6 +3,7 @@
  * real router, so a crash on any screen fails CI before it reaches TestFlight.
  */
 import { router } from 'expo-router';
+import { Alert } from 'react-native';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
 import { getDb } from '../src/db/client';
@@ -84,7 +85,14 @@ describe('app smoke test', () => {
     await visit('/settings/hours', 'Her gün aynı');
     await visit('/profile', 'Dönem özeti');
     await visit('/settings', 'Dışa aktar');
-    await visit('/settings/advanced', 'Günün bittiği saat');
+    await visit('/settings/advanced', 'Yeni gün başlangıcı');
+    // Every rule explains itself; the heat scale is a legend, not a control.
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    fireEvent.press(screen.getByLabelText('Yeni gün başlangıcı nedir?'));
+    expect(alert).toHaveBeenCalledWith('Yeni gün başlangıcı', expect.stringContaining('03:00 ya da 04:00'), expect.any(Array));
+    expect(screen.getByLabelText('Son gün kilidi nedir?')).toBeTruthy();
+    expect(screen.getByText('Bugün bitmeli; erteleme kapalı.')).toBeTruthy();
+    alert.mockRestore();
     await visit('/intro', 'İş yaklaştıkça ısınır.');
     await visit('/settings/debug', 'Demo dönem yükle');
     await visit('/add', 'Ne ekliyoruz?');
