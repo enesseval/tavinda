@@ -58,7 +58,37 @@ function NavArrows({
   );
 }
 
-export function WeekView({
+/** Week range, its load and the arrows; shared by the day and week views. */
+export function WeekHeader({ days, total, onShift }: { days: LocalDate[]; total: number; onShift: (weeks: number) => void }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: 16,
+        paddingBottom: 8,
+        paddingLeft: 20,
+        paddingRight: 8,
+      }}
+    >
+      <View style={{ gap: 1, flexShrink: 1 }}>
+        <AppText variant="headline">{fmtRange(days[0], days[days.length - 1])}</AppText>
+        <AppText variant="caption" tone="ink2" tabular>
+          {total ? t.calendar.weekLoad(fmtMinutes(total)) : t.calendar.weekEmpty}
+        </AppText>
+      </View>
+      <NavArrows
+        onPrev={() => onShift(-1)}
+        onNext={() => onShift(1)}
+        prevLabel={t.calendar.prevWeek}
+        nextLabel={t.calendar.nextWeek}
+      />
+    </View>
+  );
+}
+
+export function DayView({
   data,
   today,
   weekStart,
@@ -101,30 +131,7 @@ export function WeekView({
 
   return (
     <View style={{ flex: 1 }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingTop: 16,
-          paddingBottom: 8,
-          paddingLeft: 20,
-          paddingRight: 8,
-        }}
-      >
-        <View style={{ gap: 1, flexShrink: 1 }}>
-          <AppText variant="headline">{fmtRange(days[0], days[days.length - 1])}</AppText>
-          <AppText variant="caption" tone="ink2" tabular>
-            {total ? t.calendar.weekLoad(fmtMinutes(total)) : t.calendar.weekEmpty}
-          </AppText>
-        </View>
-        <NavArrows
-          onPrev={() => onShift(-1)}
-          onNext={() => onShift(1)}
-          prevLabel={t.calendar.prevWeek}
-          nextLabel={t.calendar.nextWeek}
-        />
-      </View>
+      <WeekHeader days={days} total={total} onShift={onShift} />
 
       {/* Day strip: a dot shows how hot the day is; the numbers live below, for the picked day. */}
       <View style={{ flexDirection: 'row', marginHorizontal: 12 }}>

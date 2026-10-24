@@ -4,7 +4,8 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
-import { MonthView, WeekView } from '../../components/calendar';
+import { DayView, MonthView } from '../../components/calendar';
+import { WeekGridView } from '../../components/weekGrid';
 import { Segmented } from '../../components/controls';
 import { PeriodPager, type PeriodPagerHandle } from '../../components/PeriodPager';
 import { Touchable } from '../../components/Touchable';
@@ -31,9 +32,15 @@ export default function CalendarScreen() {
   // Room for the tab bar under each page's scrolling part.
   const bottomInset = insets.bottom + 49 + 40;
 
+  const renderDay = useCallback(
+    (o: number) => (
+      <DayView data={data} today={today} weekStart={addDays(thisWeek, o * 7)} onShift={shift} bottomInset={bottomInset} />
+    ),
+    [data, today, thisWeek, shift, bottomInset],
+  );
   const renderWeek = useCallback(
     (o: number) => (
-      <WeekView data={data} today={today} weekStart={addDays(thisWeek, o * 7)} onShift={shift} bottomInset={bottomInset} />
+      <WeekGridView data={data} today={today} weekStart={addDays(thisWeek, o * 7)} onShift={shift} bottomInset={bottomInset} />
     ),
     [data, today, thisWeek, shift, bottomInset],
   );
@@ -79,6 +86,7 @@ export default function CalendarScreen() {
       <View style={{ marginTop: 14, marginHorizontal: 20 }}>
         <Segmented
           options={[
+            { value: 'day', label: t.calendar.segments.day },
             { value: 'week', label: t.calendar.segments.week },
             { value: 'month', label: t.calendar.segments.month },
           ]}
@@ -93,7 +101,7 @@ export default function CalendarScreen() {
         key={view}
         ref={pager}
         onChange={(o) => (offset.current = o)}
-        renderPage={view === 'week' ? renderWeek : renderMonth}
+        renderPage={view === 'day' ? renderDay : view === 'week' ? renderWeek : renderMonth}
       />
     </View>
   );
