@@ -1,7 +1,8 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-// Every TestFlight upload needs a new build number: `npm run bump:build` edits this line.
-const BUILD_NUMBER = '1';
+// Every TestFlight upload needs a new build number. `npm run ios:testflight` passes one from
+// the clock (IOS_BUILD_NUMBER); `npm run bump:build` edits this fallback for manual Xcode uploads.
+const BUILD_NUMBER = process.env.IOS_BUILD_NUMBER ?? '1';
 const VERSION = '0.1.0';
 
 // Expo Go only opens manifests the CLI can sign, which needs a logged-in Expo account
@@ -55,7 +56,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: process.env.ANDROID_PACKAGE ?? 'com.tavinda.app',
     // Play needs a higher code on every upload; CI passes its run number (.github/workflows/android.yml).
-    versionCode: Number(process.env.ANDROID_VERSION_CODE ?? BUILD_NUMBER),
+    versionCode: Math.floor(Number(process.env.ANDROID_VERSION_CODE ?? BUILD_NUMBER)),
     adaptiveIcon: {
       backgroundColor: '#1C1B19',
       foregroundImage: './assets/android-icon-foreground.png',

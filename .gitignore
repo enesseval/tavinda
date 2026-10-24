@@ -31,7 +31,8 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# Xcode artifacts
+# Xcode artifacts (npm run ios:testflight writes to build/)
+/build/
 *.ipa
 *.xcarchive
 

@@ -22,7 +22,15 @@ npx expo-doctor         # bağımlılık / config
 npx expo export -p ios  # üretim bundle'ı
 ```
 
-## Xcode ile TestFlight
+## Tek komutla TestFlight
+
+```
+git pull && npm ci && npm run ios:testflight
+```
+
+`ios/`'u üretir, otomatik imzayla arşivler ve App Store Connect'e yükler. Gerekenler: `.env` içinde `APPLE_TEAM_ID`, Xcode › Settings › Accounts'ta giriş yapılmış Apple hesabı. Build numarası saatten gelir (`yymmdd.HHMM`), `app.config.ts` yerelde değişmez. Bunu kullanmaya başladıktan sonra elle yüklemede de `IOS_BUILD_NUMBER` ver; `bump:build`'in küçük numaraları artık daha düşük kalır.
+
+## Xcode ile TestFlight (elle)
 
 Önkoşul: Mac, Xcode, CocoaPods, App Store Connect'te bu bundle id ile açılmış bir uygulama kaydı.
 

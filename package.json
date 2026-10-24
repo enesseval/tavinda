@@ -60,7 +60,8 @@
     "ios:open": "node scripts/open-workspace.js",
     "ios:release": "npm run bump:build && npm run ios:prebuild",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"__tests__/**/*.{ts,tsx,js}\" app.config.ts",
-    "ios:check": "node scripts/check-ios-modules.js"
+    "ios:check": "node scripts/check-ios-modules.js",
+    "ios:testflight": "node scripts/testflight.js"
   },
   "private": true,
   "jest": {
