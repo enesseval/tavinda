@@ -79,7 +79,7 @@ describe('app smoke test', () => {
       expect(await screen.findAllByText(text)).not.toHaveLength(0);
     };
 
-    await visit('/calendar', 'Görev pencereleri');
+    await visit('/calendar', 'Program');
     await visit('/tasks', 'Tekrarlayan');
     await visit('/block/new', 'Ne yapacaksın?');
     await visit('/settings/hours', 'Her gün aynı');
@@ -103,7 +103,7 @@ describe('app smoke test', () => {
     await visit(`/lock/${active.id}`, 'Bugün son gün.');
     await visit(`/task/${task.id}`, 'Günlük ilerleme');
     await visit(`/window/${active.id}`, 'Pencere boyunca');
-    await visit(`/day/${today}`, 'Dersler');
+    await visit(`/day/${today}`, 'Program');
     await visit('/courses', 'Takvimden ekle');
     await visit('/courses/manual', 'Dersi ekle');
     await visit('/courses/import', 'Dersleri eşle');
@@ -146,7 +146,12 @@ describe('app smoke test', () => {
     setSetting(getDb(), 'showWeekend', true);
     refresh();
     renderRouter('./src/app', { initialUrl: '/calendar' });
-    await screen.findByText('Görev pencereleri');
+    // Week: pick a day, see its classes full width and its work by heat name.
+    await screen.findAllByText('Program');
+    fireEvent.press(screen.getAllByRole('button', { name: /^Çarşamba / })[0]);
+    expect((await screen.findAllByText('Algoritmalar')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Fizik II').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^(Yapılacaklar|Yapılanlar)$/).length).toBeGreaterThan(0);
     fireEvent.press(screen.getByText('Ay'));
     expect(await screen.findByText('✓ yapılan')).toBeTruthy();
     // Sunday is in the grid (it used to wrap to the next row).
