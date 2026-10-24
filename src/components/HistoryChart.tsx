@@ -4,9 +4,17 @@ import type { HistoryDay } from '../domain/projection';
 import { fmtWeekdayShort } from '../i18n/format';
 import { t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
+import { withAlpha } from '../theme/tokens';
 import { AppText } from './AppText';
 
-/** Per-day bars: done (filled), planned (dashed), deferred (thin gray). */
+const TRACK_RADIUS = 9;
+
+/**
+ * Per-day columns. Every day has the same rounded track; a full track is the day's
+ * goal (or the busiest day when there is none). Done work fills it solid, planned
+ * work in a soft tint of the same heat, a deferred day shows a gray cap. No lines
+ * cross the columns, so nothing meets at awkward joints.
+ */
 export function HistoryChart({
   days,
   goal,
@@ -19,45 +27,60 @@ export function HistoryChart({
   legend?: boolean;
 }) {
   const { c } = useTheme();
-  const barMax = height - 30;
-  const peak = Math.max(goal ?? 0, ...days.map((d) => d.minutes), 1);
-  const scale = barMax / peak;
+  const track = height - 22;
+  const full = Math.max(goal ?? 0, ...days.map((d) => d.minutes), 1);
+
   return (
     <View>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, height }}>
-        {goal ? (
-          <View
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: Math.round(goal * scale),
-              borderTopWidth: 1,
-              borderStyle: 'dashed',
-              borderColor: c.ink3,
-            }}
-          />
-        ) : null}
+      <View style={{ flexDirection: 'row', gap: 8, height }}>
         {days.map((d) => {
           const future = d.kind === 'future';
           const deferred = d.kind === 'deferred';
-          const h = deferred ? 3 : Math.max(3, Math.round(d.minutes * scale));
+          const isToday = d.kind === 'today';
+          const fill = d.minutes > 0 ? Math.max(TRACK_RADIUS * 2, Math.round((Math.min(d.minutes, full) / full) * track)) : 0;
+          const color = c.heat[d.heat];
+          const label = !deferred && d.minutes ? String(d.minutes) : '';
           return (
-            <View key={d.day} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 6, height: '100%' }}>
-              <AppText variant="micro" tone="ink2" tabular maxFontSizeMultiplier={1.1}>
-                {deferred ? '' : d.minutes ? String(d.minutes) : '–'}
+            <View
+              key={d.day}
+              accessibilityLabel={`${isToday ? t.calendar.today : fmtWeekdayShort(d.day)}: ${
+                deferred ? t.detail.legendDeferred : `${d.minutes} dk ${future ? t.detail.legendPlanned : t.detail.legendDone}`
+              }`}
+              style={{ flex: 1, alignItems: 'stretch', justifyContent: 'flex-end', gap: 6 }}
+            >
+              <AppText
+                variant="micro"
+                tabular
+                center
+                maxFontSizeMultiplier={1.1}
+                color={future || deferred ? c.ink3 : c.ink2}
+                weight={isToday ? '600' : '500'}
+              >
+                {label}
               </AppText>
               <View
                 style={{
-                  alignSelf: 'stretch',
-                  height: h,
-                  borderRadius: 6,
-                  backgroundColor: future ? 'transparent' : deferred ? c.ink3 : d.minutes ? c.heat[d.heat] : c.line,
-                  borderWidth: future ? 1.5 : 0,
-                  borderStyle: 'dashed',
-                  borderColor: c.heat[d.heat],
+                  height: track,
+                  borderRadius: TRACK_RADIUS,
+                  backgroundColor: c.surface2,
+                  borderWidth: isToday ? 1 : 0,
+                  borderColor: withAlpha(c.ink, 0.25),
+                  overflow: 'hidden',
+                  justifyContent: 'flex-end',
                 }}
-              />
+              >
+                {deferred ? (
+                  <View style={{ height: 4, marginHorizontal: 6, marginBottom: 6, borderRadius: 2, backgroundColor: c.ink3 }} />
+                ) : fill ? (
+                  <View
+                    style={{
+                      height: fill,
+                      borderRadius: TRACK_RADIUS,
+                      backgroundColor: future ? withAlpha(color, 0.3) : color,
+                    }}
+                  />
+                ) : null}
+              </View>
             </View>
           );
         })}
@@ -96,15 +119,13 @@ export function HistoryChart({
             </AppText>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View
-              style={{ width: 10, height: 10, borderRadius: 3, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.heat[3] }}
-            />
+            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: withAlpha(c.heat[2], 0.3) }} />
             <AppText variant="caption" tone="ink2">
               {t.detail.legendPlanned}
             </AppText>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 10, height: 3, borderRadius: 2, backgroundColor: c.ink3 }} />
+            <View style={{ width: 10, height: 4, borderRadius: 2, backgroundColor: c.ink3 }} />
             <AppText variant="caption" tone="ink2">
               {t.detail.legendDeferred}
             </AppText>
