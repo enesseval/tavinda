@@ -21,6 +21,8 @@ import { Touchable } from './Touchable';
 const HOUR_PX = 48;
 /** Side margin shared by the day header, heat table and grid, so the columns line up edge to edge. */
 const SIDE = 12;
+/** Room for the hour labels left of the hour grid only; the rows above use the full width. */
+const HOURS_GUTTER = 40;
 const COLS = 7;
 
 function openSegment(taskId: number, seg: WindowSegment) {
@@ -221,7 +223,7 @@ export function WeekGridView({
         <AppText variant="label" tone="ink2" style={{ marginTop: 26, marginBottom: 12, marginHorizontal: 20 }}>
           {t.calendar.hours}
         </AppText>
-        <View style={{ marginHorizontal: SIDE, height: (endH - startH) * HOUR_PX }}>
+        <View style={{ marginLeft: HOURS_GUTTER, marginRight: SIDE, height: (endH - startH) * HOUR_PX }}>
           {todayCol >= 0 ? (
             <View
               style={{
@@ -240,13 +242,19 @@ export function WeekGridView({
               key={i}
               style={{
                 position: 'absolute',
-                left: 0,
+                left: -HOURS_GUTTER + 4,
                 right: 0,
-                top: i * HOUR_PX,
-                height: 1,
-                backgroundColor: withAlpha(c.line, 0.7),
+                top: i * HOUR_PX - 7,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
               }}
-            />
+            >
+              <AppText variant="micro" tone="ink3" tabular style={{ width: 26, textAlign: 'right' }} maxFontSizeMultiplier={1}>
+                {String((startH + i) % 24).padStart(2, '0')}
+              </AppText>
+              <View style={{ flex: 1, height: 1, backgroundColor: withAlpha(c.line, 0.7) }} />
+            </View>
           ))}
           {days.map((d, col) =>
             data.courses
@@ -317,24 +325,6 @@ export function WeekGridView({
               </Touchable>
             )),
           )}
-          {Array.from({ length: endH - startH }, (_, i) => (
-            <View
-              key={`h${i}`}
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: i * HOUR_PX + 2,
-                paddingHorizontal: 4,
-                borderRadius: 4,
-                backgroundColor: withAlpha(c.bg, 0.85),
-              }}
-            >
-              <AppText variant="micro" tone="ink3" tabular maxFontSizeMultiplier={1} style={{ fontSize: 10, lineHeight: 12 }}>
-                {String((startH + i) % 24).padStart(2, '0')}:00
-              </AppText>
-            </View>
-          ))}
           {todayCol >= 0 && nowMin != null && nowMin >= startH * 60 && nowMin <= endH * 60 ? (
             <View
               pointerEvents="none"
