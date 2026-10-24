@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, type ReactElement } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState, type ReactElement } from 'react';
 import { FlatList, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 /** Pages on each side of "now" (10 years of weeks); far more than anyone scrolls. */
@@ -19,6 +19,8 @@ export const PeriodPager = forwardRef<
   { renderPage: (offset: number) => ReactElement; onChange?: (offset: number) => void }
 >(function PeriodPager({ renderPage, onChange }, ref) {
   const { width } = useWindowDimensions();
+  // Pages fill the pager's height so each one can keep its header fixed and scroll the rest.
+  const [height, setHeight] = useState(0);
   const list = useRef<FlatList<number>>(null);
   const current = useRef(0);
   const offsets = useMemo(() => Array.from({ length: SPAN * 2 + 1 }, (_, i) => i - SPAN), []);
@@ -49,13 +51,15 @@ export const PeriodPager = forwardRef<
   return (
     <FlatList
       ref={list}
+      style={{ flex: 1 }}
+      onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
       horizontal
       pagingEnabled
       data={offsets}
       keyExtractor={String}
       initialScrollIndex={SPAN}
       getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
-      renderItem={({ item }) => <View style={{ width }}>{renderPage(item)}</View>}
+      renderItem={({ item }) => <View style={{ width, height: height || undefined }}>{renderPage(item)}</View>}
       initialNumToRender={1}
       maxToRenderPerBatch={2}
       windowSize={3}
@@ -63,7 +67,7 @@ export const PeriodPager = forwardRef<
       decelerationRate="fast"
       onMomentumScrollEnd={onEnd}
       // New data (or a new width) re-renders the mounted pages.
-      extraData={[renderPage, width]}
+      extraData={[renderPage, width, height]}
     />
   );
 });

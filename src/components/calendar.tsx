@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { addDays, DEFAULT_DUE_TIME, startOfIsoWeek, toLocalDate } from '../domain/dates';
 import { dayPlan, type DayShare } from '../domain/projection';
@@ -63,11 +63,14 @@ export function WeekView({
   today,
   weekStart,
   onShift,
+  bottomInset,
 }: {
   data: AppData;
   today: LocalDate;
   weekStart: LocalDate;
   onShift: (weeks: number) => void;
+  /** Space under the scrolling part for the tab bar. */
+  bottomInset: number;
 }) {
   const { c } = useTheme();
   const { now } = useNow();
@@ -97,7 +100,7 @@ export function WeekView({
   };
 
   return (
-    <View>
+    <View style={{ flex: 1 }}>
       <View
         style={{
           flexDirection: 'row',
@@ -169,7 +172,12 @@ export function WeekView({
         })}
       </View>
 
-      <View style={{ marginTop: 14, marginHorizontal: 20, gap: 18 }}>
+      {/* Range, arrows and the day strip stay; only the picked day scrolls. */}
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 14, paddingHorizontal: 20, paddingBottom: bottomInset, gap: 18 }}
+      >
         <View style={{ gap: 2 }}>
           <AppText variant="title" accessibilityRole="header">
             {fmtLongDay(day)}
@@ -217,7 +225,7 @@ export function WeekView({
           </AppText>
           <DayShareList plan={plan} today={today} onOpen={openShare} />
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -227,11 +235,13 @@ export function MonthView({
   today,
   monthStart,
   onShift,
+  bottomInset,
 }: {
   data: AppData;
   today: LocalDate;
   monthStart: LocalDate;
   onShift: (months: number) => void;
+  bottomInset: number;
 }) {
   const { c } = useTheme();
   const month = monthStart.slice(0, 7);
@@ -254,7 +264,7 @@ export function MonthView({
   const weeks = useMemo(() => Array.from({ length: info.length / 7 }, (_, w) => info.slice(w * 7, w * 7 + 7)), [info]);
 
   return (
-    <View>
+    <View style={{ flex: 1 }}>
       <View
         style={{
           flexDirection: 'row',
@@ -281,88 +291,90 @@ export function MonthView({
           </AppText>
         ))}
       </View>
-      <View style={{ marginTop: 8, marginHorizontal: 12, gap: 4 }}>
-        {weeks.map((week) => (
-          <View key={week[0].d} style={{ flexDirection: 'row' }}>
-            {week.map(({ d, minutes, flag, past }) => {
-              const isT = d === today;
-              const other = d.slice(0, 7) !== month;
-              const summary = minutes > 0 ? (past ? `✓ ${fmtCompactMinutes(minutes)}` : fmtCompactMinutes(minutes)) : '';
-              return (
-                <Touchable
-                  key={d}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${fmtDayShortDate(d)}${flag ? `, ${t.calendar.legendDue}` : ''}${
-                    minutes > 0
-                      ? `, ${past ? t.calendar.doneA11y(fmtMinutes(minutes)) : t.calendar.planned(fmtMinutes(minutes))}`
-                      : ''
-                  }`}
-                  onPress={() => router.push({ pathname: '/day/[date]', params: { date: d } })}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    height: 62,
-                    borderRadius: 12,
-                    alignItems: 'center',
-                    paddingTop: 6,
-                    gap: 4,
-                    backgroundColor: pressed ? c.surface2 : 'transparent',
-                  })}
-                >
-                  <View
-                    style={{
-                      width: 30,
-                      height: 30,
-                      borderRadius: 15,
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomInset }}>
+        <View style={{ marginTop: 8, marginHorizontal: 12, gap: 4 }}>
+          {weeks.map((week) => (
+            <View key={week[0].d} style={{ flexDirection: 'row' }}>
+              {week.map(({ d, minutes, flag, past }) => {
+                const isT = d === today;
+                const other = d.slice(0, 7) !== month;
+                const summary = minutes > 0 ? (past ? `✓ ${fmtCompactMinutes(minutes)}` : fmtCompactMinutes(minutes)) : '';
+                return (
+                  <Touchable
+                    key={d}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${fmtDayShortDate(d)}${flag ? `, ${t.calendar.legendDue}` : ''}${
+                      minutes > 0
+                        ? `, ${past ? t.calendar.doneA11y(fmtMinutes(minutes)) : t.calendar.planned(fmtMinutes(minutes))}`
+                        : ''
+                    }`}
+                    onPress={() => router.push({ pathname: '/day/[date]', params: { date: d } })}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      height: 62,
+                      borderRadius: 12,
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isT ? c.ink : 'transparent',
-                    }}
+                      paddingTop: 6,
+                      gap: 4,
+                      backgroundColor: pressed ? c.surface2 : 'transparent',
+                    })}
                   >
-                    <AppText
-                      variant="bodyLarge"
-                      weight={isT ? '700' : '500'}
-                      color={isT ? c.bg : other ? c.ink3 : c.ink}
-                      tabular
-                      maxFontSizeMultiplier={1.1}
+                    <View
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isT ? c.ink : 'transparent',
+                      }}
                     >
-                      {fmtDayNum(d)}
-                    </AppText>
-                  </View>
-                  <AppText
-                    variant="micro"
-                    tone={past ? 'ink3' : 'ink2'}
-                    tabular
-                    numberOfLines={1}
-                    maxFontSizeMultiplier={1}
-                    style={{ fontSize: 10 }}
-                  >
-                    {summary}
-                  </AppText>
-                  {flag ? (
-                    <View style={{ position: 'absolute', top: 5, right: 3 }}>
-                      <FlagIcon color={c.ink2} size={10} filled />
+                      <AppText
+                        variant="bodyLarge"
+                        weight={isT ? '700' : '500'}
+                        color={isT ? c.bg : other ? c.ink3 : c.ink}
+                        tabular
+                        maxFontSizeMultiplier={1.1}
+                      >
+                        {fmtDayNum(d)}
+                      </AppText>
                     </View>
-                  ) : null}
-                </Touchable>
-              );
-            })}
-          </View>
-        ))}
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, rowGap: 8, marginTop: 16, marginHorizontal: 20 }}>
-        <AppText variant="caption" tone="ink2">
-          {t.calendar.legendDone}
-        </AppText>
-        <AppText variant="caption" tone="ink2">
-          {t.calendar.legendPlanned}
-        </AppText>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <FlagIcon color={c.ink2} size={11} filled />
-          <AppText variant="caption" tone="ink2">
-            {t.calendar.legendDue}
-          </AppText>
+                    <AppText
+                      variant="micro"
+                      tone={past ? 'ink3' : 'ink2'}
+                      tabular
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={1}
+                      style={{ fontSize: 10 }}
+                    >
+                      {summary}
+                    </AppText>
+                    {flag ? (
+                      <View style={{ position: 'absolute', top: 5, right: 3 }}>
+                        <FlagIcon color={c.ink2} size={10} filled />
+                      </View>
+                    ) : null}
+                  </Touchable>
+                );
+              })}
+            </View>
+          ))}
         </View>
-      </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, rowGap: 8, marginTop: 16, marginHorizontal: 20 }}>
+          <AppText variant="caption" tone="ink2">
+            {t.calendar.legendDone}
+          </AppText>
+          <AppText variant="caption" tone="ink2">
+            {t.calendar.legendPlanned}
+          </AppText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <FlagIcon color={c.ink2} size={11} filled />
+            <AppText variant="caption" tone="ink2">
+              {t.calendar.legendDue}
+            </AppText>
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }

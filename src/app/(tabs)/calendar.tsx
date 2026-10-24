@@ -1,6 +1,6 @@
 import { addMonths, format } from 'date-fns';
 import { useCallback, useRef } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
@@ -28,62 +28,73 @@ export default function CalendarScreen() {
   const thisWeek = startOfIsoWeek(today);
   const thisMonth = parseLocalDate(`${today.slice(0, 7)}-01`);
   const shift = useCallback((n: number) => pager.current?.goTo(offset.current + n), []);
+  // Room for the tab bar under each page's scrolling part.
+  const bottomInset = insets.bottom + 49 + 40;
 
   const renderWeek = useCallback(
-    (o: number) => <WeekView data={data} today={today} weekStart={addDays(thisWeek, o * 7)} onShift={shift} />,
-    [data, today, thisWeek, shift],
+    (o: number) => (
+      <WeekView data={data} today={today} weekStart={addDays(thisWeek, o * 7)} onShift={shift} bottomInset={bottomInset} />
+    ),
+    [data, today, thisWeek, shift, bottomInset],
   );
   const renderMonth = useCallback(
-    (o: number) => <MonthView data={data} today={today} monthStart={toLocalDate(addMonths(thisMonth, o))} onShift={shift} />,
+    (o: number) => (
+      <MonthView
+        data={data}
+        today={today}
+        monthStart={toLocalDate(addMonths(thisMonth, o))}
+        onShift={shift}
+        bottomInset={bottomInset}
+      />
+    ),
     // thisMonth is derived from today.
-    [data, today, shift],
+    [data, today, shift, bottomInset],
   );
 
   return (
     <View style={{ flex: 1 }}>
       <View style={{ height: insets.top }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 49 + 40 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            paddingTop: 10,
-            paddingHorizontal: 20,
+      {/* Title and Hafta/Ay stay put; each page keeps its own period header fixed too. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          paddingTop: 10,
+          paddingHorizontal: 20,
+        }}
+      >
+        <View style={{ gap: 2 }}>
+          <AppText variant="caption" tone="ink2">
+            {t.calendar.caption(format(parseLocalDate(today), 'yyyy'), fmtIsoWeek(today))}
+          </AppText>
+          <AppText variant="display" accessibilityRole="header">
+            {t.calendar.title}
+          </AppText>
+        </View>
+        <Touchable accessibilityRole="button" hitSlop={10} onPress={() => pager.current?.goTo(0)} style={{ marginBottom: 8 }}>
+          <AppText variant="bodyLarge">{t.calendar.today}</AppText>
+        </Touchable>
+      </View>
+      <View style={{ marginTop: 14, marginHorizontal: 20 }}>
+        <Segmented
+          options={[
+            { value: 'week', label: t.calendar.segments.week },
+            { value: 'month', label: t.calendar.segments.month },
+          ]}
+          value={view}
+          onChange={(v) => {
+            offset.current = 0;
+            setView(v);
           }}
-        >
-          <View style={{ gap: 2 }}>
-            <AppText variant="caption" tone="ink2">
-              {t.calendar.caption(format(parseLocalDate(today), 'yyyy'), fmtIsoWeek(today))}
-            </AppText>
-            <AppText variant="display" accessibilityRole="header">
-              {t.calendar.title}
-            </AppText>
-          </View>
-          <Touchable accessibilityRole="button" hitSlop={10} onPress={() => pager.current?.goTo(0)} style={{ marginBottom: 8 }}>
-            <AppText variant="bodyLarge">{t.calendar.today}</AppText>
-          </Touchable>
-        </View>
-        <View style={{ marginTop: 14, marginHorizontal: 20 }}>
-          <Segmented
-            options={[
-              { value: 'week', label: t.calendar.segments.week },
-              { value: 'month', label: t.calendar.segments.month },
-            ]}
-            value={view}
-            onChange={(v) => {
-              offset.current = 0;
-              setView(v);
-            }}
-          />
-        </View>
-        <PeriodPager
-          key={view}
-          ref={pager}
-          onChange={(o) => (offset.current = o)}
-          renderPage={view === 'week' ? renderWeek : renderMonth}
         />
-      </ScrollView>
+      </View>
+      <PeriodPager
+        key={view}
+        ref={pager}
+        onChange={(o) => (offset.current = o)}
+        renderPage={view === 'week' ? renderWeek : renderMonth}
+      />
     </View>
   );
 }
