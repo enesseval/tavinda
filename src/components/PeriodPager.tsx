@@ -1,8 +1,10 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState, type ReactElement } from 'react';
-import { FlatList, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { FlatList, View, useWindowDimensions } from 'react-native';
+import Animated, { useAnimatedScrollHandler, type SharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 /** Pages on each side of "now" (10 years of weeks); far more than anyone scrolls. */
-const SPAN = 520;
+export const SPAN = 520;
 
 export interface PeriodPagerHandle {
   /** Jumps to the page `offset` periods from now (0 = this week/month). */
@@ -23,8 +25,13 @@ export const PeriodPager = forwardRef<
     width?: number;
     /** Fixed page height; otherwise pages fill the pager. */
     height?: number;
+    /**
+     * Live position in periods from now (0 = this one, 0.5 = halfway to the next), updated on
+     * the UI thread while the finger moves, so fixed headers can follow the swipe exactly.
+     */
+    progress?: SharedValue<number>;
   }
->(function PeriodPager({ renderPage, onChange, width: fixedWidth, height: fixedHeight }, ref) {
+>(function PeriodPager({ renderPage, onChange, width: fixedWidth, height: fixedHeight, progress }, ref) {
   const window = useWindowDimensions();
   const width = fixedWidth ?? window.width;
   // Pages fill the pager's height so each one can keep its header fixed and scroll the rest.
@@ -40,15 +47,16 @@ export const PeriodPager = forwardRef<
       goTo: (offset, animated = true) => {
         current.current = offset;
         list.current?.scrollToIndex({ index: offset + SPAN, animated });
+        if (!animated && progress) progress.value = offset;
         onChange?.(offset);
       },
     }),
-    [onChange],
+    [onChange, progress],
   );
 
-  const onEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offset = Math.round(e.nativeEvent.contentOffset.x / width) - SPAN;
+  const settle = useCallback(
+    (x: number) => {
+      const offset = Math.round(x / width) - SPAN;
       if (offset !== current.current) {
         current.current = offset;
         onChange?.(offset);
@@ -57,9 +65,21 @@ export const PeriodPager = forwardRef<
     [onChange, width],
   );
 
+  const onScroll = useAnimatedScrollHandler(
+    {
+      onScroll: (e) => {
+        if (progress && width > 0) progress.value = e.contentOffset.x / width - SPAN;
+      },
+      onMomentumEnd: (e) => {
+        scheduleOnRN(settle, e.contentOffset.x);
+      },
+    },
+    [progress, width, settle],
+  );
+
   return (
-    <FlatList
-      ref={list}
+    <Animated.FlatList
+      ref={list as never}
       style={fixedHeight != null ? { height: fixedHeight, flexGrow: 0 } : { flex: 1 }}
       onLayout={fixedHeight != null ? undefined : (e) => setMeasured(e.nativeEvent.layout.height)}
       horizontal
@@ -74,7 +94,8 @@ export const PeriodPager = forwardRef<
       windowSize={3}
       showsHorizontalScrollIndicator={false}
       decelerationRate="fast"
-      onMomentumScrollEnd={onEnd}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       // New data (or a new width) re-renders the mounted pages.
       extraData={[renderPage, width, height]}
     />

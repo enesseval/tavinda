@@ -1,28 +1,22 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { addMonths } from 'date-fns';
+import { useMemo, useState } from 'react';
+import { Modal, View } from 'react-native';
+import Animated, { useAnimatedReaction, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { addDays, isoWeekday, startOfIsoWeek, timeToMinutes, toLocalDate } from '../domain/dates';
+import { addDays, isoWeekday, parseLocalDate, startOfIsoWeek, timeToMinutes, toLocalDate } from '../domain/dates';
 import { dayPlan } from '../domain/projection';
 import { activeWindow, blocksOn } from '../domain/schedule';
 import type { AppData, Course, LocalDate, TimeBlock } from '../domain/types';
-import {
-  fmtCompactMinutes,
-  fmtDayNum,
-  fmtDayShortDate,
-  fmtMinutes,
-  fmtMonthYear,
-  fmtRange,
-  fmtWeekdayShort,
-} from '../i18n/format';
+import { fmtCompactMinutes, fmtDayNum, fmtDayShortDate, fmtMinutes, fmtMonthYear, fmtLongDay, fmtRange } from '../i18n/format';
 import { t, WEEKDAYS_SHORT } from '../i18n/tr';
 import { useNow } from '../services/clock';
 import { useTheme } from '../theme/theme';
 import { withAlpha } from '../theme/tokens';
 import { blockName, clockOf } from '../ui/blockText';
 import { AppText } from './AppText';
+import { Button } from './controls';
 import { ChevronLeft, ChevronRight, FlagIcon } from './icons';
 import { Touchable } from './Touchable';
 
@@ -67,29 +61,23 @@ function NavArrows({
 }
 
 /**
- * Shows `children` for `id`; when `id` changes the old content fades out and the new
- * one fades in at the same spot, so dates change without sliding.
+ * Which period a fixed header shows while the pager moves, and its opacity: full on a page,
+ * zero halfway between two, so the text swaps exactly when it is invisible and the fade
+ * follows the finger (or the arrow's scroll) frame by frame.
  */
-function FadeSwap({ id, children }: { id: string; children: (id: string) => ReactNode }) {
-  const { reduceMotion } = useTheme();
-  const [shown, setShown] = useState(id);
-  const o = useSharedValue(1);
-  useEffect(() => {
-    if (id === shown) return;
-    if (reduceMotion) {
-      setShown(id);
-      return;
-    }
-    const swap = () => setShown(id);
-    o.value = withTiming(0, { duration: 110, easing: Easing.out(Easing.quad) }, (done) => {
-      if (done) scheduleOnRN(swap);
-    });
-  }, [id, shown, reduceMotion, o]);
-  useEffect(() => {
-    o.value = withTiming(1, { duration: 170, easing: Easing.out(Easing.quad) });
-  }, [shown, o]);
-  const style = useAnimatedStyle(() => ({ opacity: o.value }));
-  return <Animated.View style={style}>{children(shown)}</Animated.View>;
+function usePeriodFade(progress: SharedValue<number>) {
+  const [shown, setShown] = useState(() => Math.round(progress.value));
+  useAnimatedReaction(
+    () => Math.round(progress.value),
+    (n, prev) => {
+      if (n !== prev) scheduleOnRN(setShown, n);
+    },
+  );
+  const style = useAnimatedStyle(() => {
+    const d = Math.abs(progress.value - Math.round(progress.value));
+    return { opacity: 1 - Math.min(1, d * 2) };
+  });
+  return [shown, style] as const;
 }
 
 /** Hour range shown for every week: the day hours and the classes (same each week), so pages line up. */
@@ -108,107 +96,103 @@ export function weekHourRange(data: AppData, weekStart: LocalDate): { startH: nu
 }
 
 /**
- * Fixed above the swiping week: range, arrows and the day row across the full width.
- * Only the text fades when the week changes.
+ * Fixed above the swiping week. The arrows and weekday names never move; the range, the
+ * week's load, the day numbers and their totals fade with the swipe.
  */
 export function WeekHeader({
   data,
   today,
-  weekStart,
+  thisWeek,
+  progress,
   onPrev,
   onNext,
 }: {
   data: AppData;
   today: LocalDate;
-  weekStart: LocalDate;
+  /** Monday of the current week (offset 0). */
+  thisWeek: LocalDate;
+  progress: SharedValue<number>;
   onPrev: () => void;
   onNext: () => void;
 }) {
   const { c } = useTheme();
+  const [shown, fade] = usePeriodFade(progress);
+  const weekStart = addDays(thisWeek, shown * 7);
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const plans = useMemo(() => days.map((d) => dayPlan(data, today, d)), [data, today, days]);
+  const total = plans.reduce((a, p) => a + p.totalMinutes, 0);
+
   return (
-    <FadeSwap id={weekStart}>
-      {(ws) => {
-        const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
-        const plans = days.map((d) => dayPlan(data, today, d));
-        const total = plans.reduce((a, p) => a + p.totalMinutes, 0);
-        return (
-          <View>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: 16,
-                paddingBottom: 8,
-                paddingLeft: 20,
-                paddingRight: 8,
-              }}
+    <View>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingTop: 16,
+          paddingBottom: 8,
+          paddingLeft: 20,
+          paddingRight: 8,
+        }}
+      >
+        <Animated.View style={[{ gap: 1, flexShrink: 1 }, fade]}>
+          <AppText variant="headline">{fmtRange(days[0], days[6])}</AppText>
+          <AppText variant="caption" tone="ink2" tabular>
+            {total ? t.calendar.weekLoad(fmtMinutes(total)) : t.calendar.weekEmpty}
+          </AppText>
+        </Animated.View>
+        <NavArrows onPrev={onPrev} onNext={onNext} prevLabel={t.calendar.prevWeek} nextLabel={t.calendar.nextWeek} />
+      </View>
+      <View style={{ flexDirection: 'row', marginHorizontal: 12 }}>
+        {WEEKDAYS_SHORT.map((w) => (
+          <AppText key={w} variant="caption" tone="ink2" center style={{ flex: 1 }} maxFontSizeMultiplier={1.1}>
+            {w}
+          </AppText>
+        ))}
+      </View>
+      <Animated.View style={[{ flexDirection: 'row', marginHorizontal: 12, paddingBottom: 6 }, fade]}>
+        {plans.map((p) => {
+          const isT = p.day === today;
+          return (
+            <Touchable
+              key={p.day}
+              accessibilityRole="button"
+              accessibilityLabel={`${fmtDayShortDate(p.day)}, ${p.totalMinutes ? fmtMinutes(p.totalMinutes) : t.calendar.noPlan}`}
+              onPress={() => router.push({ pathname: '/day/[date]', params: { date: p.day } })}
+              style={{ flex: 1, alignItems: 'center', gap: 4, paddingTop: 4 }}
             >
-              <View style={{ gap: 1, flexShrink: 1 }}>
-                <AppText variant="headline">{fmtRange(days[0], days[6])}</AppText>
-                <AppText variant="caption" tone="ink2" tabular>
-                  {total ? t.calendar.weekLoad(fmtMinutes(total)) : t.calendar.weekEmpty}
+              <View
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isT ? c.ink : 'transparent',
+                }}
+              >
+                <AppText variant="headline" color={isT ? c.bg : c.ink} tabular maxFontSizeMultiplier={1.1}>
+                  {fmtDayNum(p.day)}
                 </AppText>
               </View>
-              <NavArrows onPrev={onPrev} onNext={onNext} prevLabel={t.calendar.prevWeek} nextLabel={t.calendar.nextWeek} />
-            </View>
-            <View style={{ flexDirection: 'row', marginHorizontal: 12 }}>
-              {plans.map((p) => {
-                const isT = p.day === today;
-                return (
-                  <Touchable
-                    key={p.day}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${fmtDayShortDate(p.day)}, ${p.totalMinutes ? fmtMinutes(p.totalMinutes) : t.calendar.noPlan}`}
-                    onPress={() => router.push({ pathname: '/day/[date]', params: { date: p.day } })}
-                    style={{
-                      flex: 1,
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingTop: 6,
-                      paddingBottom: 8,
-                      borderRadius: 12,
-                      backgroundColor: isT ? withAlpha(c.ink, 0.04) : 'transparent',
-                    }}
-                  >
-                    <AppText variant="caption" tone={isT ? 'ink' : 'ink2'} maxFontSizeMultiplier={1.1}>
-                      {fmtWeekdayShort(p.day)}
-                    </AppText>
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: isT ? c.ink : 'transparent',
-                      }}
-                    >
-                      <AppText variant="headline" color={isT ? c.bg : c.ink} tabular maxFontSizeMultiplier={1.1}>
-                        {fmtDayNum(p.day)}
-                      </AppText>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <View
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: 3,
-                          backgroundColor: p.maxHeat == null || !p.totalMinutes ? c.line : c.heat[p.maxHeat],
-                        }}
-                      />
-                      <AppText variant="micro" tone="ink2" tabular numberOfLines={1} maxFontSizeMultiplier={1}>
-                        {p.totalMinutes ? fmtCompactMinutes(p.totalMinutes) : '–'}
-                      </AppText>
-                    </View>
-                  </Touchable>
-                );
-              })}
-            </View>
-          </View>
-        );
-      }}
-    </FadeSwap>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: p.maxHeat == null || !p.totalMinutes ? c.line : c.heat[p.maxHeat],
+                  }}
+                />
+                <AppText variant="micro" tone="ink2" tabular numberOfLines={1} maxFontSizeMultiplier={1}>
+                  {p.totalMinutes ? fmtCompactMinutes(p.totalMinutes) : '–'}
+                </AppText>
+              </View>
+            </Touchable>
+          );
+        })}
+      </Animated.View>
+    </View>
   );
 }
 
@@ -272,12 +256,15 @@ export function WeekColumns({
   weekStart,
   startH,
   endH,
+  onInspect,
 }: {
   data: AppData;
   today: LocalDate;
   weekStart: LocalDate;
   startH: number;
   endH: number;
+  /** Tapping a class or a block explains it. */
+  onInspect: (info: GridInfo) => void;
 }) {
   const { c } = useTheme();
   const { now } = useNow();
@@ -338,9 +325,11 @@ export function WeekColumns({
           if (item.kind === 'class') {
             const k = item.course;
             return (
-              <View
+              <Touchable
                 key={`${days[col]}-c-${k.id}`}
+                accessibilityRole="button"
                 accessibilityLabel={`${k.name}, ${k.startTime}–${k.endTime}`}
+                onPress={() => onInspect({ kind: 'class', course: k, day: days[col] })}
                 style={{ position: 'absolute', left, width, top, height, paddingHorizontal: 1.5 }}
               >
                 <View
@@ -364,7 +353,7 @@ export function WeekColumns({
                     </AppText>
                   ) : null}
                 </View>
-              </View>
+              </Touchable>
             );
           }
           const b = item.block;
@@ -373,7 +362,7 @@ export function WeekColumns({
               key={`${days[col]}-b-${b.id}`}
               accessibilityRole="button"
               accessibilityLabel={`${blockName(b)}, ${clockOf(b.startAt)}–${clockOf(b.endAt)}`}
-              onPress={() => router.push({ pathname: '/block/[id]', params: { id: String(b.id) } })}
+              onPress={() => onInspect({ kind: 'block', block: b, day: days[col] })}
               style={{ position: 'absolute', left, width, top, height, paddingHorizontal: 1.5 }}
             >
               <View
@@ -418,6 +407,92 @@ export function WeekColumns({
   );
 }
 
+export type GridInfo = { kind: 'class'; course: Course; day: LocalDate } | { kind: 'block'; block: TimeBlock; day: LocalDate };
+
+/** What a tapped class or block is, with its date; from here it can open in full. */
+export function GridInfoCard({ info, onClose }: { info: GridInfo | null; onClose: () => void }) {
+  const { c } = useTheme();
+  const open = (go: () => void) => {
+    onClose();
+    setTimeout(go, 50);
+  };
+  let body = null;
+  if (info) {
+    const isClass = info.kind === 'class';
+    const title = isClass ? info.course.name : blockName(info.block);
+    const from = isClass ? info.course.startTime : clockOf(info.block.startAt);
+    const to = isClass ? info.course.endTime : clockOf(info.block.endAt);
+    const minutes = (timeToMinutes(to) - timeToMinutes(from) + 1440) % 1440 || 1440;
+    const kind = isClass
+      ? t.calendar.infoClass(info.course.shortName)
+      : `${t.blocks.names[info.block.kind]} · ${info.block.status === 'running' ? t.calendar.infoRunning : t.calendar.infoDone}`;
+    const accent = isClass ? info.course.color : info.block.kind === 'task' ? c.heat[0] : c.ink3;
+    body = (
+      <View
+        style={{
+          width: '100%',
+          maxWidth: 360,
+          backgroundColor: c.surface,
+          borderRadius: 18,
+          padding: 18,
+          gap: 14,
+          borderWidth: 1,
+          borderColor: c.line,
+        }}
+      >
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={{ width: 4, borderRadius: 2, backgroundColor: accent }} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <AppText variant="caption" tone="ink2">
+              {kind}
+            </AppText>
+            <AppText variant="title" accessibilityRole="header">
+              {title}
+            </AppText>
+            <AppText variant="bodyLarge" tone="ink2">
+              {fmtLongDay(info.day)}
+            </AppText>
+            <AppText variant="bodyLarge" tone="ink2" tabular>
+              {from}–{to} · {fmtMinutes(minutes)}
+            </AppText>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button label={t.common.close} kind="secondary" small onPress={onClose} style={{ flex: 1 }} />
+          {info.kind === 'class' ? (
+            <Button
+              label={t.calendar.infoOpenDay}
+              small
+              onPress={() => open(() => router.push({ pathname: '/day/[date]', params: { date: info.day } }))}
+              style={{ flex: 1 }}
+            />
+          ) : (
+            <Button
+              label={t.calendar.infoOpenBlock}
+              small
+              onPress={() => open(() => router.push({ pathname: '/block/[id]', params: { id: String(info.block.id) } }))}
+              style={{ flex: 1 }}
+            />
+          )}
+        </View>
+      </View>
+    );
+  }
+  return (
+    <Modal visible={!!info} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <Touchable
+          accessibilityRole="button"
+          accessibilityLabel={t.a11y.close}
+          onPress={onClose}
+          style={{ position: 'absolute', inset: 0, backgroundColor: c.scrim }}
+        />
+        {body}
+      </View>
+    </Modal>
+  );
+}
+
 export function WeekLegend() {
   const { c } = useTheme();
   return (
@@ -443,8 +518,21 @@ export function WeekLegend() {
   );
 }
 
-/** Fixed above the swiping month: name, arrows and the weekday row. Only the name fades. */
-export function MonthHeader({ monthStart, onPrev, onNext }: { monthStart: LocalDate; onPrev: () => void; onNext: () => void }) {
+/** Fixed above the swiping month: arrows and weekday row stay, the month name fades with the swipe. */
+export function MonthHeader({
+  thisMonth,
+  progress,
+  onPrev,
+  onNext,
+}: {
+  /** First day of the current month (offset 0). */
+  thisMonth: LocalDate;
+  progress: SharedValue<number>;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const [shown, fade] = usePeriodFade(progress);
+  const monthStart = toLocalDate(addMonths(parseLocalDate(thisMonth), shown));
   return (
     <View>
       <View
@@ -458,7 +546,9 @@ export function MonthHeader({ monthStart, onPrev, onNext }: { monthStart: LocalD
           paddingRight: 8,
         }}
       >
-        <FadeSwap id={monthStart}>{(m) => <AppText variant="headline">{fmtMonthYear(m)}</AppText>}</FadeSwap>
+        <Animated.View style={fade}>
+          <AppText variant="headline">{fmtMonthYear(monthStart)}</AppText>
+        </Animated.View>
         <NavArrows onPrev={onPrev} onNext={onNext} prevLabel={t.calendar.prevMonth} nextLabel={t.calendar.nextMonth} />
       </View>
       <View style={{ flexDirection: 'row', marginHorizontal: 12 }}>

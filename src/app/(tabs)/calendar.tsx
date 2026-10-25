@@ -1,10 +1,13 @@
 import { addMonths, format } from 'date-fns';
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { useSharedValue } from 'react-native-reanimated';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
 import {
+  GridInfoCard,
+  type GridInfo,
   HOUR_PX,
   HOURS_GUTTER,
   HourGutter,
@@ -41,27 +44,33 @@ export default function CalendarScreen() {
   const pager = useRef<PeriodPagerHandle>(null);
   // Kept in a ref for the page renderers (stable while paging) and in state for the fixed header.
   const offset = useRef(0);
-  const [shown, setShown] = useState(0);
+  // Live pager position (periods from now) for the fixed headers.
+  const progress = useSharedValue(0);
+  const [inspect, setInspect] = useState<GridInfo | null>(null);
   const window = useWindowDimensions();
   // Estimated from the screen until the first layout, so the grid shows on the first frame.
   const [gridWidth, setGridWidth] = useState(Math.round(window.width - HOURS_GUTTER - 12));
 
   const thisWeek = startOfIsoWeek(today);
   const thisMonth = parseLocalDate(`${today.slice(0, 7)}-01`);
-  const weekStart = addDays(thisWeek, shown * 7);
-  const monthStart = toLocalDate(addMonths(thisMonth, shown));
   const range = useMemo(() => weekHourRange(data, thisWeek), [data, thisWeek]);
   const bottomInset = insets.bottom + 49 + 40;
 
   const onChange = useCallback((o: number) => {
     offset.current = o;
-    setShown(o);
   }, []);
   const shift = useCallback((n: number) => pager.current?.goTo(offset.current + n), []);
 
   const renderWeek = useCallback(
     (o: number) => (
-      <WeekColumns data={data} today={today} weekStart={addDays(thisWeek, o * 7)} startH={range.startH} endH={range.endH} />
+      <WeekColumns
+        data={data}
+        today={today}
+        weekStart={addDays(thisWeek, o * 7)}
+        startH={range.startH}
+        endH={range.endH}
+        onInspect={setInspect}
+      />
     ),
     [data, today, thisWeek, range],
   );
@@ -104,7 +113,7 @@ export default function CalendarScreen() {
           value={view}
           onChange={(v) => {
             offset.current = 0;
-            setShown(0);
+            progress.value = 0;
             setView(v);
           }}
         />
@@ -112,7 +121,14 @@ export default function CalendarScreen() {
 
       {view === 'week' ? (
         <>
-          <WeekHeader data={data} today={today} weekStart={weekStart} onPrev={() => shift(-1)} onNext={() => shift(1)} />
+          <WeekHeader
+            data={data}
+            today={today}
+            thisWeek={thisWeek}
+            progress={progress}
+            onPrev={() => shift(-1)}
+            onNext={() => shift(1)}
+          />
           <ScrollView
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
@@ -128,6 +144,7 @@ export default function CalendarScreen() {
                     width={gridWidth}
                     height={(range.endH - range.startH) * HOUR_PX}
                     onChange={onChange}
+                    progress={progress}
                     renderPage={renderWeek}
                   />
                 ) : null}
@@ -138,17 +155,25 @@ export default function CalendarScreen() {
         </>
       ) : (
         <>
-          <MonthHeader monthStart={monthStart} onPrev={() => shift(-1)} onNext={() => shift(1)} />
+          <MonthHeader thisMonth={toLocalDate(thisMonth)} progress={progress} onPrev={() => shift(-1)} onNext={() => shift(1)} />
           <ScrollView
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: bottomInset }}
           >
-            <PeriodPager key="month" ref={pager} height={MONTH_GRID_HEIGHT} onChange={onChange} renderPage={renderMonth} />
+            <PeriodPager
+              key="month"
+              ref={pager}
+              height={MONTH_GRID_HEIGHT}
+              onChange={onChange}
+              progress={progress}
+              renderPage={renderMonth}
+            />
             <MonthLegend />
           </ScrollView>
         </>
       )}
+      <GridInfoCard info={inspect} onClose={() => setInspect(null)} />
     </View>
   );
 }
