@@ -16,11 +16,20 @@ export interface PeriodPagerHandle {
  */
 export const PeriodPager = forwardRef<
   PeriodPagerHandle,
-  { renderPage: (offset: number) => ReactElement; onChange?: (offset: number) => void }
->(function PeriodPager({ renderPage, onChange }, ref) {
-  const { width } = useWindowDimensions();
+  {
+    renderPage: (offset: number) => ReactElement;
+    onChange?: (offset: number) => void;
+    /** Page width when the pager doesn't span the screen (e.g. next to fixed hour labels). */
+    width?: number;
+    /** Fixed page height; otherwise pages fill the pager. */
+    height?: number;
+  }
+>(function PeriodPager({ renderPage, onChange, width: fixedWidth, height: fixedHeight }, ref) {
+  const window = useWindowDimensions();
+  const width = fixedWidth ?? window.width;
   // Pages fill the pager's height so each one can keep its header fixed and scroll the rest.
-  const [height, setHeight] = useState(0);
+  const [measured, setMeasured] = useState(0);
+  const height = fixedHeight ?? measured;
   const list = useRef<FlatList<number>>(null);
   const current = useRef(0);
   const offsets = useMemo(() => Array.from({ length: SPAN * 2 + 1 }, (_, i) => i - SPAN), []);
@@ -51,8 +60,8 @@ export const PeriodPager = forwardRef<
   return (
     <FlatList
       ref={list}
-      style={{ flex: 1 }}
-      onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
+      style={fixedHeight != null ? { height: fixedHeight, flexGrow: 0 } : { flex: 1 }}
+      onLayout={fixedHeight != null ? undefined : (e) => setMeasured(e.nativeEvent.layout.height)}
       horizontal
       pagingEnabled
       data={offsets}

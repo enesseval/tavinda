@@ -79,7 +79,7 @@ describe('app smoke test', () => {
       expect(await screen.findAllByText(text)).not.toHaveLength(0);
     };
 
-    await visit('/calendar', 'Isı tablosu');
+    await visit('/calendar', 'Yaptıkların');
     await visit('/tasks', 'Tekrarlayan');
     await visit('/block/new', 'Ne yapacaksın?');
     await visit('/settings/hours', 'Her gün aynı');
@@ -103,7 +103,7 @@ describe('app smoke test', () => {
     await visit(`/lock/${active.id}`, 'Bugün son gün.');
     await visit(`/task/${task.id}`, 'Günlük ilerleme');
     await visit(`/window/${active.id}`, 'Pencere boyunca');
-    await visit(`/day/${today}`, 'Program');
+    await visit(`/day/${today}`, 'Dersler');
     await visit('/courses', 'Takvimden ekle');
     await visit('/courses/manual', 'Dersi ekle');
     await visit('/courses/import', 'Dersleri eşle');
@@ -146,18 +146,11 @@ describe('app smoke test', () => {
     setSetting(getDb(), 'showWeekend', true);
     refresh();
     renderRouter('./src/app', { initialUrl: '/calendar' });
-    // Week: pick a day, see its classes full width and its work by heat name.
-    // Hafta: heat table and hour grid on the same columns, classes by code.
-    await screen.findAllByText('Isı tablosu');
-    expect(screen.getAllByText('Saatler').length).toBeGreaterThan(0);
+    // Hafta: hour grid with classes; the day row and hour labels stay while weeks swipe.
+    await screen.findAllByText('Yaptıkların');
     expect(screen.getAllByLabelText(/^Algoritmalar, 13:00–14:50$/).length).toBeGreaterThan(0);
-    // Gün: pick a day, see it full width.
-    fireEvent.press(screen.getByText('Gün'));
-    await screen.findAllByText('Program');
-    fireEvent.press(screen.getAllByRole('button', { name: /^Çarşamba / })[0]);
-    expect((await screen.findAllByText('Algoritmalar')).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Fizik II').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/^(Yapılacaklar|Yapılanlar)$/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Isı tablosu')).toBeNull();
+    expect(screen.queryByText('Görev pencereleri')).toBeNull();
     fireEvent.press(screen.getByText('Ay'));
     expect(await screen.findByText('✓ yapılan')).toBeTruthy();
     // Sunday is in the grid (it used to wrap to the next row).

@@ -1,11 +1,22 @@
 import { addMonths, format } from 'date-fns';
-import { useCallback, useRef } from 'react';
-import { View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '../../components/AppText';
-import { DayView, MonthView } from '../../components/calendar';
-import { WeekGridView } from '../../components/weekGrid';
+import {
+  HOUR_PX,
+  HOURS_GUTTER,
+  HourGutter,
+  MONTH_GRID_HEIGHT,
+  MonthGrid,
+  MonthHeader,
+  MonthLegend,
+  WeekColumns,
+  WeekHeader,
+  WeekLegend,
+  weekHourRange,
+} from '../../components/calendar';
 import { Segmented } from '../../components/controls';
 import { PeriodPager, type PeriodPagerHandle } from '../../components/PeriodPager';
 import { Touchable } from '../../components/Touchable';
@@ -16,6 +27,11 @@ import { useNow } from '../../services/clock';
 import { useAppData } from '../../services/data';
 import { useUi } from '../../store/ui';
 
+/**
+ * Takvim. Title, Hafta/Ay, the period header with its arrows, the day row and the hour
+ * labels stay where they are; only the grid swipes between periods, and the header text
+ * fades to the new dates.
+ */
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const data = useAppData();
@@ -23,45 +39,41 @@ export default function CalendarScreen() {
   const view = useUi((s) => s.calendarView);
   const setView = useUi((s) => s.setCalendarView);
   const pager = useRef<PeriodPagerHandle>(null);
-  // Current page, kept in a ref so the page renderers stay stable while paging.
+  // Kept in a ref for the page renderers (stable while paging) and in state for the fixed header.
   const offset = useRef(0);
+  const [shown, setShown] = useState(0);
+  const window = useWindowDimensions();
+  // Estimated from the screen until the first layout, so the grid shows on the first frame.
+  const [gridWidth, setGridWidth] = useState(Math.round(window.width - HOURS_GUTTER - 12));
 
   const thisWeek = startOfIsoWeek(today);
   const thisMonth = parseLocalDate(`${today.slice(0, 7)}-01`);
-  const shift = useCallback((n: number) => pager.current?.goTo(offset.current + n), []);
-  // Room for the tab bar under each page's scrolling part.
+  const weekStart = addDays(thisWeek, shown * 7);
+  const monthStart = toLocalDate(addMonths(thisMonth, shown));
+  const range = useMemo(() => weekHourRange(data, thisWeek), [data, thisWeek]);
   const bottomInset = insets.bottom + 49 + 40;
 
-  const renderDay = useCallback(
-    (o: number) => (
-      <DayView data={data} today={today} weekStart={addDays(thisWeek, o * 7)} onShift={shift} bottomInset={bottomInset} />
-    ),
-    [data, today, thisWeek, shift, bottomInset],
-  );
+  const onChange = useCallback((o: number) => {
+    offset.current = o;
+    setShown(o);
+  }, []);
+  const shift = useCallback((n: number) => pager.current?.goTo(offset.current + n), []);
+
   const renderWeek = useCallback(
     (o: number) => (
-      <WeekGridView data={data} today={today} weekStart={addDays(thisWeek, o * 7)} onShift={shift} bottomInset={bottomInset} />
+      <WeekColumns data={data} today={today} weekStart={addDays(thisWeek, o * 7)} startH={range.startH} endH={range.endH} />
     ),
-    [data, today, thisWeek, shift, bottomInset],
+    [data, today, thisWeek, range],
   );
   const renderMonth = useCallback(
-    (o: number) => (
-      <MonthView
-        data={data}
-        today={today}
-        monthStart={toLocalDate(addMonths(thisMonth, o))}
-        onShift={shift}
-        bottomInset={bottomInset}
-      />
-    ),
+    (o: number) => <MonthGrid data={data} today={today} monthStart={toLocalDate(addMonths(thisMonth, o))} />,
     // thisMonth is derived from today.
-    [data, today, shift, bottomInset],
+    [data, today],
   );
 
   return (
     <View style={{ flex: 1 }}>
       <View style={{ height: insets.top }} />
-      {/* Title and Hafta/Ay stay put; each page keeps its own period header fixed too. */}
       <View
         style={{
           flexDirection: 'row',
@@ -86,23 +98,57 @@ export default function CalendarScreen() {
       <View style={{ marginTop: 14, marginHorizontal: 20 }}>
         <Segmented
           options={[
-            { value: 'day', label: t.calendar.segments.day },
             { value: 'week', label: t.calendar.segments.week },
             { value: 'month', label: t.calendar.segments.month },
           ]}
           value={view}
           onChange={(v) => {
             offset.current = 0;
+            setShown(0);
             setView(v);
           }}
         />
       </View>
-      <PeriodPager
-        key={view}
-        ref={pager}
-        onChange={(o) => (offset.current = o)}
-        renderPage={view === 'day' ? renderDay : view === 'week' ? renderWeek : renderMonth}
-      />
+
+      {view === 'week' ? (
+        <>
+          <WeekHeader data={data} today={today} weekStart={weekStart} onPrev={() => shift(-1)} onNext={() => shift(1)} />
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingTop: 14, paddingBottom: bottomInset }}
+          >
+            <View style={{ flexDirection: 'row', marginRight: 12 }}>
+              <HourGutter startH={range.startH} endH={range.endH} />
+              <View style={{ flex: 1 }} onLayout={(e) => setGridWidth(Math.round(e.nativeEvent.layout.width))}>
+                {gridWidth > 0 ? (
+                  <PeriodPager
+                    key={`week-${gridWidth}`}
+                    ref={pager}
+                    width={gridWidth}
+                    height={(range.endH - range.startH) * HOUR_PX}
+                    onChange={onChange}
+                    renderPage={renderWeek}
+                  />
+                ) : null}
+              </View>
+            </View>
+            <WeekLegend />
+          </ScrollView>
+        </>
+      ) : (
+        <>
+          <MonthHeader monthStart={monthStart} onPrev={() => shift(-1)} onNext={() => shift(1)} />
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: bottomInset }}
+          >
+            <PeriodPager key="month" ref={pager} height={MONTH_GRID_HEIGHT} onChange={onChange} renderPage={renderMonth} />
+            <MonthLegend />
+          </ScrollView>
+        </>
+      )}
     </View>
   );
 }

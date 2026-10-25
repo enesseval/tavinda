@@ -4,34 +4,28 @@ import { View } from 'react-native';
 
 import { AppText } from '../../components/AppText';
 import { CloseButton } from '../../components/controls';
-import { DayAgenda, DayShareList } from '../../components/dayPlan';
-import { FlagIcon } from '../../components/icons';
+import { FlagIcon, LockIcon } from '../../components/icons';
 import { Sheet } from '../../components/Sheet';
-import { DEFAULT_DUE_TIME, isLocalDate, toLocalDate } from '../../domain/dates';
+import { DEFAULT_DUE_TIME, isLocalDate } from '../../domain/dates';
 import { dayPlan } from '../../domain/projection';
-import { dayTimeline } from '../../domain/schedule';
+import { blocksOn } from '../../domain/schedule';
+import { blockName, clockOf } from '../../ui/blockText';
 import { fmtLongDay, fmtMinutes } from '../../i18n/format';
-import { t } from '../../i18n/tr';
+import { HEAT_NAMES, t } from '../../i18n/tr';
 import { useNow } from '../../services/clock';
 import { useAppData } from '../../services/data';
 import { useTheme } from '../../theme/theme';
+import { Touchable } from '../../components/Touchable';
 
 export default function DaySheet() {
   const { date } = useLocalSearchParams<{ date: string }>();
   const { c } = useTheme();
   const data = useAppData();
-  const { now, today } = useNow();
+  const { today } = useNow();
   const valid = isLocalDate(date);
   const plan = useMemo(() => (valid ? dayPlan(data, today, date) : null), [data, today, date, valid]);
-  const timeline = useMemo(() => (valid ? dayTimeline(data, date) : null), [data, date, valid]);
-  if (!plan || !timeline) return null;
-  const clock = now.getHours() * 60 + now.getMinutes();
-  const nowMinutes = plan.isToday ? (toLocalDate(now) === today ? clock : clock + 1440) : null;
-  // Close the sheet first, then open the next screen.
-  const go = (open: () => void) => {
-    router.back();
-    setTimeout(open, 50);
-  };
+  const blocks = useMemo(() => (valid ? blocksOn(data.blocks, date) : []), [data.blocks, date, valid]);
+  if (!plan) return null;
 
   const sub = plan.isPast
     ? t.calendar.pastDay
@@ -81,23 +75,134 @@ export default function DaySheet() {
         </View>
       ))}
 
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 8 }}>
         <AppText variant="label" tone="ink2">
-          {t.calendar.agenda}
+          {t.calendar.classes}
         </AppText>
-        <DayAgenda
-          timeline={timeline}
-          nowMinutes={nowMinutes}
-          onGap={plan.isToday ? () => go(() => router.push('/block/new')) : undefined}
-          onBlock={(id) => go(() => router.push({ pathname: '/block/[id]', params: { id: String(id) } }))}
-        />
+        {plan.classes.length ? (
+          plan.classes.map((k) => (
+            <View
+              key={k.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                minHeight: 40,
+                borderBottomWidth: 1,
+                borderBottomColor: c.line,
+              }}
+            >
+              <View style={{ width: 3, height: 22, borderRadius: 2, backgroundColor: k.color }} />
+              <AppText variant="body" weight="500" style={{ flex: 1 }}>
+                {k.name}
+              </AppText>
+              <AppText variant="caption" tone="ink2" tabular>
+                {k.startTime}–{k.endTime}
+              </AppText>
+            </View>
+          ))
+        ) : (
+          <AppText variant="body" tone="ink3">
+            {t.calendar.noClasses}
+          </AppText>
+        )}
       </View>
 
-      <View style={{ gap: 10 }}>
-        <AppText variant="label" tone="ink2">
-          {plan.isPast ? t.calendar.worked : t.calendar.todo}
-        </AppText>
-        <DayShareList plan={plan} today={today} onOpen={(s) => openShare(s.instance.id, s.task.id)} />
+      {blocks.length ? (
+        <View style={{ gap: 8 }}>
+          <AppText variant="label" tone="ink2">
+            {t.calendar.legendBlock}
+          </AppText>
+          {blocks.map(({ block }) => (
+            <Touchable
+              key={block.id}
+              accessibilityRole="button"
+              onPress={() => {
+                router.back();
+                setTimeout(() => router.push({ pathname: '/block/[id]', params: { id: String(block.id) } }), 50);
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                minHeight: 40,
+                borderBottomWidth: 1,
+                borderBottomColor: c.line,
+              }}
+            >
+              <View
+                style={{ width: 3, height: 22, borderRadius: 2, backgroundColor: block.kind === 'task' ? c.heat[0] : c.ink3 }}
+              />
+              <AppText variant="body" weight="500" style={{ flex: 1 }} numberOfLines={1}>
+                {blockName(block)}
+              </AppText>
+              <AppText variant="caption" tone="ink2" tabular>
+                {clockOf(block.startAt)}–{clockOf(block.endAt)}
+              </AppText>
+            </Touchable>
+          ))}
+        </View>
+      ) : null}
+
+      <View style={{ gap: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <AppText variant="label" tone="ink2">
+            {plan.isPast ? t.calendar.worked : t.calendar.shares}
+          </AppText>
+          {plan.totalMinutes ? (
+            <AppText variant="label" tone="ink2" tabular>
+              {t.calendar.total(fmtMinutes(plan.totalMinutes))}
+            </AppText>
+          ) : null}
+        </View>
+        {plan.shares.length ? (
+          plan.shares.map((s) => (
+            <Touchable
+              key={`${s.instance.id}-${s.task.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${s.task.title}, ${HEAT_NAMES[s.heat]}, ${fmtMinutes(s.minutes)}`}
+              onPress={() => openShare(s.instance.id, s.task.id)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingVertical: 12,
+                paddingRight: 14,
+                paddingLeft: 18,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: c.line,
+                overflow: 'hidden',
+                backgroundColor: pressed ? c.surface2 : 'transparent',
+              })}
+            >
+              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: c.heat[s.heat] }} />
+              <View style={{ flex: 1, gap: 3 }}>
+                <AppText variant="bodyStrong">{s.task.title}</AppText>
+                {s.course ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: s.course.color }} />
+                    <AppText variant="caption" tone="ink2">
+                      {s.course.shortName} · {HEAT_NAMES[s.heat]}
+                    </AppText>
+                  </View>
+                ) : (
+                  <AppText variant="caption" tone="ink2">
+                    {HEAT_NAMES[s.heat]}
+                  </AppText>
+                )}
+              </View>
+              {s.lastDay && s.task.kind === 'weekly' ? <LockIcon color={c.heat[4]} size={12} /> : null}
+              <AppText variant="bodyStrong" tabular>
+                {fmtMinutes(s.minutes)}
+              </AppText>
+            </Touchable>
+          ))
+        ) : (
+          <AppText variant="body" tone="ink3">
+            {t.calendar.noShares}
+          </AppText>
+        )}
       </View>
     </Sheet>
   );

@@ -112,3 +112,24 @@ describe('notification switches', () => {
     expect(kinds({ freeTimePrompts: false }).has('classEnd')).toBe(false);
   });
 });
+
+describe('week grid lanes', () => {
+  const { layoutLanes } = require('../src/components/calendar');
+  test('overlapping items share the column side by side; separate ones keep the full width', () => {
+    const out = layoutLanes([
+      { id: 'a', start: 480, end: 540 }, // 08–09
+      { id: 'b', start: 540, end: 600 }, // 09–10 (touches a, no overlap)
+      { id: 'c', start: 570, end: 780 }, // 09:30–13:00 overlaps b
+      { id: 'd', start: 600, end: 660 }, // 10–11 overlaps c, b's lane is free again
+      { id: 'e', start: 900, end: 960 }, // 15–16 alone
+    ]);
+    const by = Object.fromEntries(
+      out.map((x: { item: { id: string }; lane: number; lanes: number }) => [x.item.id, [x.lane, x.lanes]]),
+    );
+    expect(by.a).toEqual([0, 1]);
+    expect(by.b).toEqual([0, 2]);
+    expect(by.c).toEqual([1, 2]);
+    expect(by.d).toEqual([0, 2]);
+    expect(by.e).toEqual([0, 1]);
+  });
+});
