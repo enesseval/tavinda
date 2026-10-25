@@ -1,5 +1,5 @@
 import { addDays, diffDays, maxDate, minDate } from './dates';
-import { heatFor, minutesDoneOn, remainingMinutes, shareForInstance, weeklyBaseHeat } from './heat';
+import { heatFor, minutesDoneOn, plannedShareOn, remainingMinutes, weeklyBaseHeat } from './heat';
 import { applyReconcile, reconcile } from './reconcile';
 import { isLive } from './taskState';
 import { coursesOn, isLongTerm } from './today';
@@ -90,8 +90,8 @@ export function dayPlan(data: AppData, today: LocalDate, day: LocalDate): DayPla
       if (!task) continue;
       const heat = heatFor(inst, task, day, data.settings);
       if (isLongTerm(task, inst, day, heat)) continue;
-      const done = day === today ? minutesDoneOn(data.progressLogs, inst.id, day, task.estimatedMinutes) : 0;
-      const minutes = shareForInstance(inst, task, day, done);
+      const done = minutesDoneOn(data.progressLogs, inst.id, today, task.estimatedMinutes);
+      const minutes = plannedShareOn(inst, task, today, day, done);
       if (minutes <= 0) continue;
       shares.push({
         instance: inst,
@@ -245,7 +245,8 @@ export function instanceHistory(data: AppData, inst: TaskInstance, task: Task, t
       const kind: HistoryDayKind = d === today ? 'today' : minutes === 0 && deferDays.has(d) ? 'deferred' : 'past';
       out.push({ day: d, minutes, heat, kind });
     } else {
-      const minutes = inst.status === 'active' && inst.scheduledDate <= d ? shareForInstance(inst, task, d) : 0;
+      const done = minutesDoneOn(data.progressLogs, inst.id, today, task.estimatedMinutes);
+      const minutes = plannedShareOn(inst, task, today, d, done);
       out.push({ day: d, minutes, heat: inst.status === 'active' ? heatFor(inst, task, d, data.settings) : 0, kind: 'future' });
     }
   }

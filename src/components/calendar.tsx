@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { addMonths } from 'date-fns';
 import { useMemo, useState } from 'react';
-import { Modal, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { useAnimatedReaction, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -9,18 +9,19 @@ import { addDays, isoWeekday, parseLocalDate, startOfIsoWeek, timeToMinutes, toL
 import { dayPlan } from '../domain/projection';
 import { activeWindow, blocksOn } from '../domain/schedule';
 import type { AppData, Course, LocalDate, TimeBlock } from '../domain/types';
-import { fmtCompactMinutes, fmtDayNum, fmtDayShortDate, fmtMinutes, fmtMonthYear, fmtLongDay, fmtRange } from '../i18n/format';
+import { fmtCompactMinutes, fmtDayNum, fmtDayShortDate, fmtMinutes, fmtMonthYear, fmtRange } from '../i18n/format';
 import { t, WEEKDAYS_SHORT } from '../i18n/tr';
 import { useNow } from '../services/clock';
 import { useTheme } from '../theme/theme';
 import { withAlpha } from '../theme/tokens';
 import { blockName, clockOf } from '../ui/blockText';
 import { AppText } from './AppText';
-import { Button } from './controls';
 import { ChevronLeft, ChevronRight, FlagIcon } from './icons';
 import { Touchable } from './Touchable';
 
-export const HOUR_PX = 48;
+export const HOUR_PX = 52;
+/** Space kept around every item in the hour grid, so neighbours never touch. */
+const GAP = 2;
 /** Width of the fixed hour labels left of the week grid. */
 export const HOURS_GUTTER = 40;
 /** Month grid: six rows of 62 + gaps, so every month pages at the same height. */
@@ -104,6 +105,8 @@ export function WeekHeader({
   today,
   thisWeek,
   progress,
+  selected,
+  onSelect,
   onPrev,
   onNext,
 }: {
@@ -112,6 +115,9 @@ export function WeekHeader({
   /** Monday of the current week (offset 0). */
   thisWeek: LocalDate;
   progress: SharedValue<number>;
+  /** Day picked in the strip; its column is highlighted and the grid scrolls to it. */
+  selected: LocalDate;
+  onSelect: (day: LocalDate) => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
@@ -153,12 +159,14 @@ export function WeekHeader({
       <Animated.View style={[{ flexDirection: 'row', marginHorizontal: 12, paddingBottom: 6 }, fade]}>
         {plans.map((p) => {
           const isT = p.day === today;
+          const isSel = p.day === selected;
           return (
             <Touchable
               key={p.day}
               accessibilityRole="button"
+              accessibilityState={{ selected: isSel }}
               accessibilityLabel={`${fmtDayShortDate(p.day)}, ${p.totalMinutes ? fmtMinutes(p.totalMinutes) : t.calendar.noPlan}`}
-              onPress={() => router.push({ pathname: '/day/[date]', params: { date: p.day } })}
+              onPress={() => onSelect(p.day)}
               style={{ flex: 1, alignItems: 'center', gap: 4, paddingTop: 4 }}
             >
               <View
@@ -168,10 +176,12 @@ export function WeekHeader({
                   borderRadius: 15,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: isT ? c.ink : 'transparent',
+                  backgroundColor: isSel ? c.ink : 'transparent',
+                  borderWidth: isT && !isSel ? 1.5 : 0,
+                  borderColor: c.ink2,
                 }}
               >
-                <AppText variant="headline" color={isT ? c.bg : c.ink} tabular maxFontSizeMultiplier={1.1}>
+                <AppText variant="headline" color={isSel ? c.bg : c.ink} tabular maxFontSizeMultiplier={1.1}>
                   {fmtDayNum(p.day)}
                 </AppText>
               </View>
@@ -256,15 +266,14 @@ export function WeekColumns({
   weekStart,
   startH,
   endH,
-  onInspect,
+  selected,
 }: {
   data: AppData;
   today: LocalDate;
   weekStart: LocalDate;
   startH: number;
   endH: number;
-  /** Tapping a class or a block explains it. */
-  onInspect: (info: GridInfo) => void;
+  selected: LocalDate;
 }) {
   const { c } = useTheme();
   const { now } = useNow();
@@ -274,6 +283,7 @@ export function WeekColumns({
   const hi = endH * 60;
   const Y = (m: number) => ((m - lo) / 60) * HOUR_PX;
   const todayCol = days.indexOf(today);
+  const selCol = days.indexOf(selected);
   const nowMin = toLocalDate(now) === today ? now.getHours() * 60 + now.getMinutes() : null;
 
   const perDay = useMemo(
@@ -300,15 +310,15 @@ export function WeekColumns({
 
   return (
     <View style={{ height: (endH - startH) * HOUR_PX }}>
-      {todayCol >= 0 ? (
+      {selCol >= 0 ? (
         <View
           style={{
             position: 'absolute',
             top: 0,
             bottom: 0,
-            left: `${todayCol * colW}%`,
+            left: `${selCol * colW}%`,
             width: `${colW}%`,
-            backgroundColor: withAlpha(c.ink, 0.03),
+            backgroundColor: withAlpha(c.ink, 0.06),
             borderRadius: 8,
           }}
         />
@@ -320,8 +330,9 @@ export function WeekColumns({
         list.map(({ item, lane, lanes }) => {
           const left = `${col * colW + (colW * lane) / lanes}%` as const;
           const width = `${colW / lanes}%` as const;
-          const top = Y(item.start) + 1;
-          const height = Math.max(18, Y(item.end) - Y(item.start) - 2);
+          // A clear gap between items that touch (one ends at 15:00, the next starts at 15:00).
+          const top = Y(item.start) + GAP;
+          const height = Math.max(14, Y(item.end) - Y(item.start) - GAP * 2);
           if (item.kind === 'class') {
             const k = item.course;
             return (
@@ -329,13 +340,15 @@ export function WeekColumns({
                 key={`${days[col]}-c-${k.id}`}
                 accessibilityRole="button"
                 accessibilityLabel={`${k.name}, ${k.startTime}–${k.endTime}`}
-                onPress={() => onInspect({ kind: 'class', course: k, day: days[col] })}
-                style={{ position: 'absolute', left, width, top, height, paddingHorizontal: 1.5 }}
+                onPress={() => router.push({ pathname: '/class/[id]', params: { id: String(k.id), date: days[col] } })}
+                style={{ position: 'absolute', left, width, top, height, paddingHorizontal: GAP }}
               >
                 <View
                   style={{
                     flex: 1,
                     backgroundColor: c.surface2,
+                    borderWidth: 1,
+                    borderColor: withAlpha(k.color, 0.35),
                     borderLeftWidth: 3,
                     borderLeftColor: k.color,
                     borderRadius: 6,
@@ -362,13 +375,15 @@ export function WeekColumns({
               key={`${days[col]}-b-${b.id}`}
               accessibilityRole="button"
               accessibilityLabel={`${blockName(b)}, ${clockOf(b.startAt)}–${clockOf(b.endAt)}`}
-              onPress={() => onInspect({ kind: 'block', block: b, day: days[col] })}
-              style={{ position: 'absolute', left, width, top, height, paddingHorizontal: 1.5 }}
+              onPress={() => router.push({ pathname: '/block/[id]', params: { id: String(b.id) } })}
+              style={{ position: 'absolute', left, width, top, height, paddingHorizontal: GAP }}
             >
               <View
                 style={{
                   flex: 1,
                   backgroundColor: withAlpha(b.kind === 'task' ? c.heat[0] : c.ink2, 0.18),
+                  borderWidth: 1,
+                  borderColor: withAlpha(b.kind === 'task' ? c.heat[0] : c.ink2, 0.4),
                   borderRadius: 6,
                   paddingVertical: 3,
                   paddingHorizontal: 4,
@@ -404,92 +419,6 @@ export function WeekColumns({
         />
       ) : null}
     </View>
-  );
-}
-
-export type GridInfo = { kind: 'class'; course: Course; day: LocalDate } | { kind: 'block'; block: TimeBlock; day: LocalDate };
-
-/** What a tapped class or block is, with its date; from here it can open in full. */
-export function GridInfoCard({ info, onClose }: { info: GridInfo | null; onClose: () => void }) {
-  const { c } = useTheme();
-  const open = (go: () => void) => {
-    onClose();
-    setTimeout(go, 50);
-  };
-  let body = null;
-  if (info) {
-    const isClass = info.kind === 'class';
-    const title = isClass ? info.course.name : blockName(info.block);
-    const from = isClass ? info.course.startTime : clockOf(info.block.startAt);
-    const to = isClass ? info.course.endTime : clockOf(info.block.endAt);
-    const minutes = (timeToMinutes(to) - timeToMinutes(from) + 1440) % 1440 || 1440;
-    const kind = isClass
-      ? t.calendar.infoClass(info.course.shortName)
-      : `${t.blocks.names[info.block.kind]} · ${info.block.status === 'running' ? t.calendar.infoRunning : t.calendar.infoDone}`;
-    const accent = isClass ? info.course.color : info.block.kind === 'task' ? c.heat[0] : c.ink3;
-    body = (
-      <View
-        style={{
-          width: '100%',
-          maxWidth: 360,
-          backgroundColor: c.surface,
-          borderRadius: 18,
-          padding: 18,
-          gap: 14,
-          borderWidth: 1,
-          borderColor: c.line,
-        }}
-      >
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <View style={{ width: 4, borderRadius: 2, backgroundColor: accent }} />
-          <View style={{ flex: 1, gap: 4 }}>
-            <AppText variant="caption" tone="ink2">
-              {kind}
-            </AppText>
-            <AppText variant="title" accessibilityRole="header">
-              {title}
-            </AppText>
-            <AppText variant="bodyLarge" tone="ink2">
-              {fmtLongDay(info.day)}
-            </AppText>
-            <AppText variant="bodyLarge" tone="ink2" tabular>
-              {from}–{to} · {fmtMinutes(minutes)}
-            </AppText>
-          </View>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Button label={t.common.close} kind="secondary" small onPress={onClose} style={{ flex: 1 }} />
-          {info.kind === 'class' ? (
-            <Button
-              label={t.calendar.infoOpenDay}
-              small
-              onPress={() => open(() => router.push({ pathname: '/day/[date]', params: { date: info.day } }))}
-              style={{ flex: 1 }}
-            />
-          ) : (
-            <Button
-              label={t.calendar.infoOpenBlock}
-              small
-              onPress={() => open(() => router.push({ pathname: '/block/[id]', params: { id: String(info.block.id) } }))}
-              style={{ flex: 1 }}
-            />
-          )}
-        </View>
-      </View>
-    );
-  }
-  return (
-    <Modal visible={!!info} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <Touchable
-          accessibilityRole="button"
-          accessibilityLabel={t.a11y.close}
-          onPress={onClose}
-          style={{ position: 'absolute', inset: 0, backgroundColor: c.scrim }}
-        />
-        {body}
-      </View>
-    </Modal>
   );
 }
 
@@ -563,7 +492,18 @@ export function MonthHeader({
 }
 
 /** The swiping part of the month: the day grid. */
-export function MonthGrid({ data, today, monthStart }: { data: AppData; today: LocalDate; monthStart: LocalDate }) {
+export function MonthGrid({
+  data,
+  today,
+  monthStart,
+  onPick,
+}: {
+  data: AppData;
+  today: LocalDate;
+  monthStart: LocalDate;
+  /** A tapped day opens its week in the hour grid. */
+  onPick: (day: LocalDate) => void;
+}) {
   const { c } = useTheme();
   const month = monthStart.slice(0, 7);
   const gridStart = startOfIsoWeek(monthStart);
@@ -601,7 +541,7 @@ export function MonthGrid({ data, today, monthStart }: { data: AppData; today: L
                     ? `, ${past ? t.calendar.doneA11y(fmtMinutes(minutes)) : t.calendar.planned(fmtMinutes(minutes))}`
                     : ''
                 }`}
-                onPress={() => router.push({ pathname: '/day/[date]', params: { date: d } })}
+                onPress={() => onPick(d)}
                 style={({ pressed }) => ({
                   flex: 1,
                   height: 62,

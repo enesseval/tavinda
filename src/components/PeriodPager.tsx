@@ -30,15 +30,17 @@ export const PeriodPager = forwardRef<
      * the UI thread while the finger moves, so fixed headers can follow the swipe exactly.
      */
     progress?: SharedValue<number>;
+    /** Page to open on (periods from now). */
+    initialOffset?: number;
   }
->(function PeriodPager({ renderPage, onChange, width: fixedWidth, height: fixedHeight, progress }, ref) {
+>(function PeriodPager({ renderPage, onChange, width: fixedWidth, height: fixedHeight, progress, initialOffset = 0 }, ref) {
   const window = useWindowDimensions();
   const width = fixedWidth ?? window.width;
   // Pages fill the pager's height so each one can keep its header fixed and scroll the rest.
   const [measured, setMeasured] = useState(0);
   const height = fixedHeight ?? measured;
   const list = useRef<FlatList<number>>(null);
-  const current = useRef(0);
+  const current = useRef(initialOffset);
   const offsets = useMemo(() => Array.from({ length: SPAN * 2 + 1 }, (_, i) => i - SPAN), []);
 
   useImperativeHandle(
@@ -86,7 +88,7 @@ export const PeriodPager = forwardRef<
       pagingEnabled
       data={offsets}
       keyExtractor={String}
-      initialScrollIndex={SPAN}
+      initialScrollIndex={SPAN + initialOffset}
       getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
       renderItem={({ item }) => <View style={{ width, height: height || undefined }}>{renderPage(item)}</View>}
       initialNumToRender={1}

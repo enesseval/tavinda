@@ -195,7 +195,7 @@ export default function TaskDetail() {
           ) : null}
         </View>
         <Card style={{ marginHorizontal: 20, paddingTop: 18, paddingHorizontal: 16, paddingBottom: 14 }}>
-          <HistoryChart days={history} goal={active ? item.shareMinutes : undefined} />
+          <HistoryChart days={history} goal={active ? item.shareMinutes : undefined} heat={active ? item.heat : 0} />
         </Card>
 
         <AppText variant="title" style={{ paddingTop: 28, paddingBottom: 10, paddingHorizontal: 20 }}>

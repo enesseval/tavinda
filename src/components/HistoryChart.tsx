@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import type { HistoryDay } from '../domain/projection';
+import type { HeatLevel } from '../domain/types';
 import { fmtWeekdayShort } from '../i18n/format';
 import { t } from '../i18n/tr';
 import { useTheme } from '../theme/theme';
@@ -20,11 +21,14 @@ export function HistoryChart({
   goal,
   height = 110,
   legend = true,
+  heat,
 }: {
   days: HistoryDay[];
   goal?: number;
   height?: number;
   legend?: boolean;
+  /** One colour for every column (the task's heat), so the legend matches the bars. */
+  heat?: HeatLevel;
 }) {
   const { c } = useTheme();
   const track = height - 22;
@@ -38,7 +42,7 @@ export function HistoryChart({
           const deferred = d.kind === 'deferred';
           const isToday = d.kind === 'today';
           const fill = d.minutes > 0 ? Math.max(TRACK_RADIUS * 2, Math.round((Math.min(d.minutes, full) / full) * track)) : 0;
-          const color = c.heat[d.heat];
+          const color = c.heat[heat ?? d.heat];
           const label = !deferred && d.minutes ? String(d.minutes) : '';
           return (
             <View
@@ -113,13 +117,13 @@ export function HistoryChart({
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: c.heat[2] }} />
+            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: c.heat[heat ?? 2] }} />
             <AppText variant="caption" tone="ink2">
               {t.detail.legendDone}
             </AppText>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: withAlpha(c.heat[2], 0.3) }} />
+            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: withAlpha(c.heat[heat ?? 2], 0.3) }} />
             <AppText variant="caption" tone="ink2">
               {t.detail.legendPlanned}
             </AppText>

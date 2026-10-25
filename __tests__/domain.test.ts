@@ -293,3 +293,38 @@ describe('task list (Görevler tab)', () => {
     expect(m.done.map((i) => i.instance.id)).toEqual([100]);
   });
 });
+
+describe('planned shares over the coming days', () => {
+  const { plannedShareOn } = require('../src/domain/heat');
+  test('a 2 h task half done, 30 min a day: 30 tomorrow, 30 the day after, then nothing', () => {
+    const task = deadlineTask({ estimatedMinutes: 120, dueAt: '2026-10-08' });
+    const inst = instance({
+      taskId: task.id,
+      windowStart: '2026-10-01',
+      windowEnd: '2026-10-08',
+      progress: 50,
+      scheduledDate: '2026-10-02',
+    });
+    const days = ['2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'];
+    // The hour done today already covers today's share.
+    const plan = days.map((d) => plannedShareOn(inst, task, '2026-10-02', d, 60));
+    expect(plan).toEqual([0, 30, 30, 0, 0]);
+    // Never more in total than what is left.
+    expect(plan.reduce((a: number, b: number) => a + b, 0)).toBe(60);
+  });
+
+  test('without work today the plan starts today and still adds up', () => {
+    const task = deadlineTask({ estimatedMinutes: 180, dueAt: '2026-10-06' });
+    const inst = instance({
+      taskId: task.id,
+      windowStart: '2026-10-01',
+      windowEnd: '2026-10-06',
+      progress: 0,
+      scheduledDate: '2026-10-02',
+    });
+    const days = ['2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'];
+    const plan = days.map((d) => plannedShareOn(inst, task, '2026-10-02', d));
+    expect(plan.reduce((a: number, b: number) => a + b, 0)).toBe(180);
+    for (let i = 1; i < plan.length; i++) expect(plan[i]).toBeLessThanOrEqual(Math.max(plan[i - 1], 45));
+  });
+});

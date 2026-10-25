@@ -1,4 +1,4 @@
-import { diffDays } from './dates';
+import { addDays, diffDays } from './dates';
 import type { HeatLevel, LocalDate, Settings, Task, TaskInstance } from './types';
 
 export const HEAT_LEVELS: HeatLevel[] = [0, 1, 2, 3, 4];
@@ -166,6 +166,31 @@ export function shareForInstance(inst: TaskInstance, task: Task, today: LocalDat
   const remaining = remainingMinutes(inst.progress, task.estimatedMinutes);
   const planned = suggestedDailyShare(remaining + doneTodayMinutes, daysLeft);
   return Math.min(remaining, Math.max(0, planned - doneTodayMinutes));
+}
+
+/**
+ * Share planned for `day` (today or later). Each day from today on gets its own share first,
+ * so later days only get what is still left: 60 min left at 30 a day is 30 tomorrow, 30 the
+ * day after and nothing after that, not 30, 60, 60.
+ */
+export function plannedShareOn(inst: TaskInstance, task: Task, today: LocalDate, day: LocalDate, doneTodayMinutes = 0): number {
+  if (inst.status !== 'active' || day > inst.windowEnd) return 0;
+  let start = today;
+  if (inst.windowStart > start) start = inst.windowStart;
+  if (inst.scheduledDate > start) start = inst.scheduledDate;
+  if (day < start) return 0;
+  let remaining = remainingMinutes(inst.progress, task.estimatedMinutes);
+  let d = start;
+  if (start === today) {
+    const todayShare = shareForInstance(inst, task, today, doneTodayMinutes);
+    if (day === today) return todayShare;
+    remaining -= todayShare;
+    d = addDays(today, 1);
+  }
+  for (; d < day && remaining > 0; d = addDays(d, 1)) {
+    remaining -= suggestedDailyShare(remaining, Math.max(1, daysLeftInclusive(inst.windowEnd, d)));
+  }
+  return remaining > 0 ? suggestedDailyShare(remaining, Math.max(1, daysLeftInclusive(inst.windowEnd, day))) : 0;
 }
 
 export interface HeatRankable {

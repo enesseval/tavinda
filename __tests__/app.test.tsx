@@ -151,12 +151,12 @@ describe('app smoke test', () => {
     expect(screen.getAllByLabelText(/^Algoritmalar, 13:00–14:50$/).length).toBeGreaterThan(0);
     expect(screen.queryByText('Isı tablosu')).toBeNull();
     expect(screen.queryByText('Görev pencereleri')).toBeNull();
-    // Tapping a class explains it, with its date.
+    // Tapping a class opens its sheet with the date; tapping a day picks it instead of opening a sheet.
     fireEvent.press(screen.getAllByLabelText(/^Algoritmalar, 13:00–14:50$/)[0]);
-    expect(await screen.findByText('Ders · ALG')).toBeTruthy();
-    expect(screen.getByText(/^Çarşamba, \d+ /)).toBeTruthy();
-    expect(screen.getByText('13:00–14:50 · 1 sa 50 dk')).toBeTruthy();
-    fireEvent.press(screen.getByText('Kapat'));
+    expect(await screen.findByText('Dersleri düzenle')).toBeTruthy();
+    expect(screen.getAllByText(/^Çarşamba, \d+ /).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('13:00–14:50 · 1 sa 50 dk').length).toBeGreaterThan(0);
+    act(() => router.back());
     fireEvent.press(screen.getByText('Ay'));
     expect(await screen.findByText('✓ yapılan')).toBeTruthy();
     // Sunday is in the grid (it used to wrap to the next row).

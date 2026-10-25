@@ -7,6 +7,7 @@ import { Button } from '../../components/controls';
 import { ProgressSlider } from '../../components/ProgressSlider';
 import { Sheet } from '../../components/Sheet';
 import { parseTimestamp } from '../../domain/schedule';
+import { fmtLongDay } from '../../i18n/format';
 import { t } from '../../i18n/tr';
 import { deleteBlock, extendBlock, finishBlock } from '../../services/actions';
 import { useNow } from '../../services/clock';
@@ -35,7 +36,7 @@ export default function BlockSheet() {
     <Sheet scroll>
       <View style={{ gap: 4 }}>
         <AppText variant="label" tone="ink2" tabular>
-          {range}
+          {fmtLongDay(block.startAt.slice(0, 10))} · {range}
         </AppText>
         <AppText variant="sheetTitle">{block.status === 'running' && ended ? t.blocks.finishTitle : name}</AppText>
         <AppText variant="body" tone="ink2">

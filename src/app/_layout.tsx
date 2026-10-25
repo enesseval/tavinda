@@ -133,6 +133,7 @@ function AppStack() {
         <Stack.Screen name="settings/hours" />
         <Stack.Screen name="block/new" options={sheet} />
         <Stack.Screen name="block/[id]" options={sheet} />
+        <Stack.Screen name="class/[id]" options={sheet} />
       </Stack>
       <DayWatcher />
       <Toasts />
