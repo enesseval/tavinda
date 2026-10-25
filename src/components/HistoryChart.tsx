@@ -32,7 +32,8 @@ export function HistoryChart({
 }) {
   const { c } = useTheme();
   const track = height - 22;
-  const full = Math.max(goal ?? 0, ...days.map((d) => d.minutes), 1);
+  const full = Math.max(goal ?? 0, ...days.map((d) => Math.max(d.minutes, d.planned ?? 0)), 1);
+  const barH = (m: number) => (m > 0 ? Math.max(TRACK_RADIUS * 2, Math.round((Math.min(m, full) / full) * track)) : 0);
 
   return (
     <View>
@@ -41,14 +42,28 @@ export function HistoryChart({
           const future = d.kind === 'future';
           const deferred = d.kind === 'deferred';
           const isToday = d.kind === 'today';
-          const fill = d.minutes > 0 ? Math.max(TRACK_RADIUS * 2, Math.round((Math.min(d.minutes, full) / full) * track)) : 0;
+          const fill = barH(d.minutes);
+          // Today: the target in the soft tint, what is done in solid on top of it.
+          const target = isToday ? barH(d.planned ?? 0) : 0;
           const color = c.heat[heat ?? d.heat];
-          const label = !deferred && d.minutes ? String(d.minutes) : '';
+          const label = deferred
+            ? ''
+            : isToday && (d.planned ?? 0) > d.minutes
+              ? d.minutes
+                ? `${d.minutes}/${d.planned}`
+                : String(d.planned)
+              : d.minutes
+                ? String(d.minutes)
+                : '';
           return (
             <View
               key={d.day}
               accessibilityLabel={`${isToday ? t.calendar.today : fmtWeekdayShort(d.day)}: ${
-                deferred ? t.detail.legendDeferred : `${d.minutes} dk ${future ? t.detail.legendPlanned : t.detail.legendDone}`
+                deferred
+                  ? t.detail.legendDeferred
+                  : isToday
+                    ? `${d.minutes} dk ${t.detail.legendDone}, ${d.planned ?? d.minutes} dk ${t.detail.legendPlanned}`
+                    : `${d.minutes} dk ${future ? t.detail.legendPlanned : t.detail.legendDone}`
               }`}
               style={{ flex: 1, alignItems: 'stretch', justifyContent: 'flex-end', gap: 6 }}
             >
@@ -73,6 +88,19 @@ export function HistoryChart({
                   justifyContent: 'flex-end',
                 }}
               >
+                {target > fill ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: target,
+                      borderRadius: TRACK_RADIUS,
+                      backgroundColor: withAlpha(color, 0.3),
+                    }}
+                  />
+                ) : null}
                 {deferred ? (
                   <View style={{ height: 4, marginHorizontal: 6, marginBottom: 6, borderRadius: 2, backgroundColor: c.ink3 }} />
                 ) : fill ? (

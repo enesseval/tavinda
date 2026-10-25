@@ -169,9 +169,9 @@ export function shareForInstance(inst: TaskInstance, task: Task, today: LocalDat
 }
 
 /**
- * Share planned for `day` (today or later). Days after today are planned from the work that
- * is actually left now (today's open share isn't assumed done), each one taking its share
- * before the next: 60 min left at 30 a day is 30 tomorrow, 30 the day after, then nothing.
+ * Share planned for `day` (today or later). Each day from today on takes its share before
+ * the next, so later days only get what is left: 90 min left at 30 a day is 30 today, 30
+ * tomorrow, 30 the day after. Logging progress today replans from what is really left.
  */
 export function plannedShareOn(inst: TaskInstance, task: Task, today: LocalDate, day: LocalDate, doneTodayMinutes = 0): number {
   if (inst.status !== 'active' || day > inst.windowEnd) return 0;
@@ -182,9 +182,10 @@ export function plannedShareOn(inst: TaskInstance, task: Task, today: LocalDate,
   let remaining = remainingMinutes(inst.progress, task.estimatedMinutes);
   let d = start;
   if (start === today) {
-    if (day === today) return shareForInstance(inst, task, today, doneTodayMinutes);
-    // Today's share counts only once it is done: what is still open today carries to the
-    // next days, so tomorrow never looks empty for work nobody has done yet.
+    const todayShare = shareForInstance(inst, task, today, doneTodayMinutes);
+    if (day === today) return todayShare;
+    // The plan counts on today's share being done today; logging progress replans the rest.
+    remaining -= todayShare;
     d = addDays(today, 1);
   }
   for (; d < day && remaining > 0; d = addDays(d, 1)) {

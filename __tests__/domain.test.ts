@@ -313,7 +313,7 @@ describe('planned shares over the coming days', () => {
     expect(plan.reduce((a: number, b: number) => a + b, 0)).toBe(60);
   });
 
-  test('45 min left and nothing done today: 45 today, and still 45 tomorrow until it is done', () => {
+  test('45 min left and nothing done today: today plans all 45, the days after are free', () => {
     const task = weeklyTask({ estimatedMinutes: 90 });
     const inst = instance({
       taskId: task.id,
@@ -323,10 +323,10 @@ describe('planned shares over the coming days', () => {
       scheduledDate: '2026-10-02',
     });
     const days = ['2026-10-02', '2026-10-03', '2026-10-04'];
-    expect(days.map((d) => plannedShareOn(inst, task, '2026-10-02', d))).toEqual([45, 45, 0]);
+    expect(days.map((d) => plannedShareOn(inst, task, '2026-10-02', d))).toEqual([45, 0, 0]);
   });
 
-  test('the days after today cover exactly the work left', () => {
+  test('today and the days after cover exactly the work left', () => {
     const task = deadlineTask({ estimatedMinutes: 180, dueAt: '2026-10-06' });
     const inst = instance({
       taskId: task.id,
@@ -335,9 +335,26 @@ describe('planned shares over the coming days', () => {
       progress: 0,
       scheduledDate: '2026-10-02',
     });
-    const later = ['2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'];
-    const plan = later.map((d) => plannedShareOn(inst, task, '2026-10-02', d));
+    const days = ['2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'];
+    const plan = days.map((d) => plannedShareOn(inst, task, '2026-10-02', d));
+    expect(plan[0]).toBeGreaterThan(0);
     expect(plan.reduce((a: number, b: number) => a + b, 0)).toBe(180);
+  });
+
+  test('the task chart shows today’s target even before any work', () => {
+    const { instanceHistory } = require('../src/domain/projection');
+    const task = deadlineTask({ estimatedMinutes: 90, dueAt: '2026-10-06' });
+    const inst = instance({
+      id: 301,
+      taskId: task.id,
+      windowStart: '2026-10-01',
+      windowEnd: '2026-10-06',
+      progress: 50,
+      scheduledDate: '2026-10-02',
+    });
+    const days = instanceHistory(appData({ tasks: [task], instances: [inst] }), inst, task, '2026-10-02');
+    const today = days.find((d: { kind: string }) => d.kind === 'today');
+    expect(today).toMatchObject({ minutes: 0, planned: 45 });
   });
 });
 

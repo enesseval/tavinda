@@ -209,7 +209,10 @@ export type HistoryDayKind = 'past' | 'today' | 'future' | 'deferred';
 
 export interface HistoryDay {
   day: LocalDate;
+  /** Done (past, today) or planned (future). */
   minutes: number;
+  /** Today only: the day's target (done so far + what is still planned). */
+  planned?: number;
   heat: HeatLevel;
   kind: HistoryDayKind;
 }
@@ -243,7 +246,11 @@ export function instanceHistory(data: AppData, inst: TaskInstance, task: Task, t
       const minutes = Math.max(0, Math.round((pct * task.estimatedMinutes) / 100));
       const heat = heatFor({ ...inst, progress: Math.min(99, progressAt), status: 'active' }, task, d, data.settings);
       const kind: HistoryDayKind = d === today ? 'today' : minutes === 0 && deferDays.has(d) ? 'deferred' : 'past';
-      out.push({ day: d, minutes, heat, kind });
+      if (kind === 'today') {
+        // Today shows its target too, not only what is already done.
+        const open = plannedShareOn(inst, task, today, today, minutes);
+        out.push({ day: d, minutes, planned: minutes + open, heat, kind });
+      } else out.push({ day: d, minutes, heat, kind });
     } else {
       const done = minutesDoneOn(data.progressLogs, inst.id, today, task.estimatedMinutes);
       const minutes = plannedShareOn(inst, task, today, d, done);
