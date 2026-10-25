@@ -253,6 +253,33 @@ export function instanceHistory(data: AppData, inst: TaskInstance, task: Task, t
   return out;
 }
 
+/**
+ * Work in a stretch of days: what was done on past days, plus what is planned from today
+ * on. Open work shows on each coming day until it is done, so per task the planned part is
+ * capped at what is actually left, and the same minutes are never counted twice.
+ */
+export function rangeLoadMinutes(data: AppData, today: LocalDate, days: LocalDate[]): number {
+  let total = 0;
+  const ahead = new Map<number, { minutes: number; left: number }>();
+  for (const d of days) {
+    const plan = dayPlan(data, today, d);
+    if (d < today) {
+      total += plan.totalMinutes;
+      continue;
+    }
+    for (const s of plan.shares) {
+      const cur = ahead.get(s.instance.id) ?? {
+        minutes: 0,
+        left: remainingMinutes(s.instance.progress, s.task.estimatedMinutes),
+      };
+      cur.minutes += s.minutes;
+      ahead.set(s.instance.id, cur);
+    }
+  }
+  for (const { minutes, left } of ahead.values()) total += Math.min(minutes, left);
+  return total;
+}
+
 /** Sum of remaining minutes the instance still needs. */
 export function remainingFor(inst: TaskInstance, task: Task): number {
   return remainingMinutes(inst.progress, task.estimatedMinutes);

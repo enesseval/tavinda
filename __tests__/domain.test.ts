@@ -313,7 +313,20 @@ describe('planned shares over the coming days', () => {
     expect(plan.reduce((a: number, b: number) => a + b, 0)).toBe(60);
   });
 
-  test('without work today the plan starts today and still adds up', () => {
+  test('45 min left and nothing done today: 45 today, and still 45 tomorrow until it is done', () => {
+    const task = weeklyTask({ estimatedMinutes: 90 });
+    const inst = instance({
+      taskId: task.id,
+      windowStart: '2026-09-30',
+      windowEnd: '2026-10-06',
+      progress: 50,
+      scheduledDate: '2026-10-02',
+    });
+    const days = ['2026-10-02', '2026-10-03', '2026-10-04'];
+    expect(days.map((d) => plannedShareOn(inst, task, '2026-10-02', d))).toEqual([45, 45, 0]);
+  });
+
+  test('the days after today cover exactly the work left', () => {
     const task = deadlineTask({ estimatedMinutes: 180, dueAt: '2026-10-06' });
     const inst = instance({
       taskId: task.id,
@@ -322,9 +335,26 @@ describe('planned shares over the coming days', () => {
       progress: 0,
       scheduledDate: '2026-10-02',
     });
-    const days = ['2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'];
-    const plan = days.map((d) => plannedShareOn(inst, task, '2026-10-02', d));
+    const later = ['2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'];
+    const plan = later.map((d) => plannedShareOn(inst, task, '2026-10-02', d));
     expect(plan.reduce((a: number, b: number) => a + b, 0)).toBe(180);
-    for (let i = 1; i < plan.length; i++) expect(plan[i]).toBeLessThanOrEqual(Math.max(plan[i - 1], 45));
+  });
+});
+
+describe('week load', () => {
+  const { rangeLoadMinutes } = require('../src/domain/projection');
+  test('open work shown on two days is counted once', () => {
+    const task = deadlineTask({ estimatedMinutes: 90, dueAt: '2026-10-06' });
+    const inst = instance({
+      id: 300,
+      taskId: task.id,
+      windowStart: '2026-10-01',
+      windowEnd: '2026-10-06',
+      progress: 50,
+      scheduledDate: '2026-10-02',
+    });
+    const data = appData({ tasks: [task], instances: [inst] });
+    const days = ['2026-10-02', '2026-10-03', '2026-10-04'];
+    expect(rangeLoadMinutes(data, '2026-10-02', days)).toBe(45);
   });
 });

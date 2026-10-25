@@ -6,7 +6,7 @@ import Animated, { useAnimatedReaction, useAnimatedStyle, type SharedValue } fro
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { addDays, isoWeekday, parseLocalDate, startOfIsoWeek, timeToMinutes, toLocalDate } from '../domain/dates';
-import { dayPlan } from '../domain/projection';
+import { dayPlan, rangeLoadMinutes } from '../domain/projection';
 import { activeWindow, blocksOn } from '../domain/schedule';
 import type { AppData, Course, LocalDate, TimeBlock } from '../domain/types';
 import { fmtCompactMinutes, fmtDayNum, fmtDayShortDate, fmtMinutes, fmtMonthYear, fmtRange } from '../i18n/format';
@@ -126,7 +126,7 @@ export function WeekHeader({
   const weekStart = addDays(thisWeek, shown * 7);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const plans = useMemo(() => days.map((d) => dayPlan(data, today, d)), [data, today, days]);
-  const total = plans.reduce((a, p) => a + p.totalMinutes, 0);
+  const total = useMemo(() => rangeLoadMinutes(data, today, days), [data, today, days]);
 
   return (
     <View>
