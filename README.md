@@ -41,7 +41,7 @@ git pull && npm ci && npm run ios:testflight
    ```
    Ya da `app.config.ts` içindeki `com.REPLACE.tavinda` değerini doğrudan değiştir.
 2. `npm run ios:release` — build numarasını artırır (`app.config.ts` → `BUILD_NUMBER`) ve `ios/` klasörünü sıfırdan üretir (pod install dahil).
-3. `npm run ios:open` — `.xcworkspace`'i Xcode'da açar.
+3. `npm run ios:open` — `.xcworkspace`'i Xcode'da açar. `npm ci`'den sonra eski `ios/` klasörüyle açarsan önce `pod install`'u kendisi çalıştırır (yoksa ExpoSQLite "Cannot find 'exsqlite3_open'" hatası verir).
 4. Xcode: Signing & Capabilities → "Automatically manage signing" açık, Team seçili. Bunu **iki hedef için de** yap: `Tavnda` (uygulama) ve `TavindaWidget` (widget + Live Activity). App Group (`group.<bundle id>`) her iki hedefte de görünmeli; Xcode ilk imzalamada Apple hesabına kendisi kaydeder.
 5. Üstte hedef olarak **Any iOS Device (arm64)** seç.
 6. **Product › Archive**.
