@@ -34,7 +34,8 @@ let last = '';
 
 export function syncLiveActivity(data: AppData): void {
   if (!native) return;
-  const b = liveBlock(data.blocks);
+  // Switched off in Ayarlar: end any activity on screen and start none.
+  const b = data.settings.liveActivities ? liveBlock(data.blocks) : null;
   const offset = data.settings.timeOffsetMs;
   const payload: Payload | null = b
     ? {

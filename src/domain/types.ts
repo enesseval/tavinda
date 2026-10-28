@@ -127,6 +127,10 @@ export interface Settings {
   showWeekend: boolean;
   onboarded: boolean;
   dayHours: DayHours;
+  /** Master switch: off cancels every reminder, whatever the iOS permission says. */
+  notificationsOn: boolean;
+  /** Show a running time block on the lock screen and in the Dynamic Island. */
+  liveActivities: boolean;
   /** Per-type notification switches. */
   notifyMorning: boolean;
   notifyLastDay: boolean;

@@ -18,12 +18,21 @@ import { exportToFile, pickBackup, restoreBackup } from '../../services/backup';
 import { getCalendarPermission, openAppSettings } from '../../services/calendar';
 import { useNow } from '../../services/clock';
 import { useAppData } from '../../services/data';
+import { liveActivityStatus } from '../../services/liveActivity';
 import { getNotificationStatus, requestNotificationPermission } from '../../services/notifications';
 import { useOnboarding, useUi } from '../../store/ui';
 import { useTheme } from '../../theme/theme';
 import { groupCourses } from '../../ui/courseDrafts';
 
-type Switch = 'notifyMorning' | 'notifyLastDay' | 'notifyStartNow' | 'notifyClassEnd' | 'notifyBlockEnd' | 'freeTimePrompts';
+type Switch =
+  | 'notificationsOn'
+  | 'liveActivities'
+  | 'notifyMorning'
+  | 'notifyLastDay'
+  | 'notifyStartNow'
+  | 'notifyClassEnd'
+  | 'notifyBlockEnd'
+  | 'freeTimePrompts';
 
 /** Everyday settings. Rules with good defaults live under Gelişmiş, tools under Geliştirici. */
 export default function SettingsScreen() {
@@ -38,11 +47,14 @@ export default function SettingsScreen() {
   const [calPerm, setCalPerm] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
   const [picker, setPicker] = useState<'morning' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [live, setLive] = useState(liveActivityStatus);
 
   useFocusEffect(
     useCallback(() => {
       getNotificationStatus().then(setNotif);
       getCalendarPermission().then(setCalPerm);
+      // Re-read after a trip to iOS Settings.
+      setLive(liveActivityStatus());
     }, []),
   );
 
@@ -124,29 +136,50 @@ export default function SettingsScreen() {
           />
         </SettingsGroup>
 
-        <SettingsGroup title={t.settings.groupNotifications} footer={t.settings.notifFoot}>
-          <SettingsRow
-            label={t.settings.notifPermission}
-            value={notif === 'granted' ? t.settings.notifOn : t.settings.notifOff}
-            chevron={notif !== 'granted'}
-            onPress={
-              notif === 'granted'
-                ? undefined
-                : async () => {
-                    if (notif === 'denied') openAppSettings();
-                    else setNotif((await requestNotificationPermission()) ? 'granted' : 'denied');
-                  }
-            }
-          />
-          {toggle('notifyMorning', t.settings.morning)}
-          {s.notifyMorning ? (
-            <SettingsRow label={t.settings.morningTime} value={s.morningTime} chevron onPress={() => setPicker('morning')} />
+        <SettingsGroup
+          title={t.settings.groupNotifications}
+          footer={s.notificationsOn ? t.settings.notifFoot : t.settings.notifMasterOffFoot}
+        >
+          {toggle('notificationsOn', t.settings.notifMaster, !s.notificationsOn)}
+          {s.notificationsOn ? (
+            <>
+              {/* iOS lets only its own Settings take the permission back, so this row always goes there once asked. */}
+              <SettingsRow
+                label={t.settings.notifPermission}
+                value={
+                  notif === 'granted'
+                    ? t.settings.notifOnSystem
+                    : notif === 'denied'
+                      ? t.settings.notifDeniedSystem
+                      : t.settings.notifOff
+                }
+                chevron
+                onPress={async () => {
+                  if (notif === 'undetermined') setNotif((await requestNotificationPermission()) ? 'granted' : 'denied');
+                  else openAppSettings();
+                }}
+              />
+              {toggle('notifyMorning', t.settings.morning)}
+              {s.notifyMorning ? (
+                <SettingsRow label={t.settings.morningTime} value={s.morningTime} chevron onPress={() => setPicker('morning')} />
+              ) : null}
+              {toggle('notifyLastDay', t.settings.notifLastDay)}
+              {toggle('notifyStartNow', t.settings.notifStartNow)}
+              {toggle('notifyBlockEnd', t.settings.notifBlockEnd)}
+              {toggle('notifyClassEnd', t.settings.notifClassEnd, true)}
+            </>
           ) : null}
-          {toggle('notifyLastDay', t.settings.notifLastDay)}
-          {toggle('notifyStartNow', t.settings.notifStartNow)}
-          {toggle('notifyBlockEnd', t.settings.notifBlockEnd)}
-          {toggle('notifyClassEnd', t.settings.notifClassEnd, true)}
         </SettingsGroup>
+
+        {live !== 'unsupported' ? (
+          <SettingsGroup
+            title={t.settings.groupLive}
+            footer={live === 'off' ? t.settings.liveSystemOffFoot : t.settings.liveFoot}
+          >
+            {toggle('liveActivities', t.settings.liveToggle, live !== 'off')}
+            {live === 'off' ? <SettingsRow label={t.settings.liveOpenSettings} chevron onPress={openAppSettings} last /> : null}
+          </SettingsGroup>
+        ) : null}
 
         <SettingsGroup title={t.settings.groupFreeTime} footer={t.settings.freeTimeFoot}>
           {toggle('freeTimePrompts', t.settings.freeTime, true)}

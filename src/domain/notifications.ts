@@ -141,6 +141,7 @@ export function planNotifications(data: AppData, now: Date, horizonDays = 7): Pl
   }
 
   const s = data.settings;
+  if (!s.notificationsOn) return [];
   const enabled: Record<PlannedNotification['kind'], boolean> = {
     morning: s.notifyMorning,
     lastDayMorning: s.notifyLastDay,

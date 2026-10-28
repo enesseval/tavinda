@@ -110,6 +110,22 @@ describe('notification switches', () => {
     expect(kinds({ notifyBlockEnd: false }).has('blockEnd')).toBe(false);
     expect(kinds({ notifyClassEnd: false }).has('classEnd')).toBe(false);
     expect(kinds({ freeTimePrompts: false }).has('classEnd')).toBe(false);
+    // The master switch silences everything, whatever the per-type switches say.
+    expect(kinds({ notificationsOn: false }).size).toBe(0);
+  });
+
+  test('the new switches default to on, and "0" turns them off', () => {
+    const { parseSettings } = require('../src/domain/settings');
+    expect(parseSettings([])).toMatchObject({ notificationsOn: true, liveActivities: true });
+    expect(
+      parseSettings([
+        { key: 'notificationsOn', value: '0' },
+        { key: 'liveActivities', value: '0' },
+      ]),
+    ).toMatchObject({
+      notificationsOn: false,
+      liveActivities: false,
+    });
   });
 });
 

@@ -100,6 +100,8 @@ async function doReschedule(data: AppData): Promise<void> {
   const status = await getNotificationStatus();
   if (status !== 'granted') return;
   await Notifications.cancelAllScheduledNotificationsAsync();
+  // Switched off in the app: nothing is scheduled again until it is back on.
+  if (!data.settings.notificationsOn) return;
   const appNow = getNow();
   const offset = appNow.getTime() - Date.now();
   const realNow = Date.now();
